@@ -2,6 +2,7 @@
 #define _SP_ENC_H
 
 #include "typedef.h"
+#include "sp_runtime.h"
 
 typedef struct
 {

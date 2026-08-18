@@ -71,7 +71,7 @@ static void Levinson( Float32 *old_A, Float32 *r, Float32 *A, Float32 *rc )
       rct[i - 1] = ( -sum ) / ( err );
 
       for ( int j = 1; j <= ( i / 2 ); j++ ) {
-         l = i - j;
+         int l = i - j;
          Float32 at = A[j] + rct[i - 1] *A[l];
          A[l] += rct[i - 1] *A[j];
          A[j] = at;
@@ -146,7 +146,6 @@ static Float32 Chebps( Float32 x, Float32 f[] )
 static void Az_lsp( Float32 a[], Float32 lsp[], Float32 old_lsp[] )
 {
    Float32 xlow, ylow, xhigh, yhigh, xmid, ymid, xint;
-   Float32 y;
    Float32 *coef;
    Float32 f1[6], f2[6];
 
@@ -160,8 +159,8 @@ static void Az_lsp( Float32 a[], Float32 lsp[], Float32 old_lsp[] )
    f1[NC] *= 0.5F;
    f2[NC] *= 0.5F;
 
-   Word32 nf = 0;   /* number of found frequencies */
-   Word32 ip = 0;   /* indicator for f1 or f2 */
+   Word32 nf = 0;
+   Word32 ip = 0;
    coef = f1;
    xlow = grid[0];
    ylow = Chebps( xlow, coef );
@@ -189,7 +188,7 @@ static void Az_lsp( Float32 a[], Float32 lsp[], Float32 old_lsp[] )
             }
          }
 
-         y = yhigh - ylow;
+         Float32 y = yhigh - ylow;
 
          if ( y == 0 ) {
             xint = xlow;
@@ -379,9 +378,7 @@ static void Reorder_lsf( Float32 *lsf, Float32 min_dist )
    Float32 lsf_min = min_dist;
 
    for ( Word32 i = 0; i < M; i++ ) {
-      if ( lsf[i] < lsf_min ) {
-         lsf[i] = lsf_min;
-      }
+      CLIP_IF_LOWER(lsf[i], lsf_min);
       lsf_min = lsf[i] + min_dist;
    }
 }
@@ -405,15 +402,12 @@ static Word16 Vq_subvec3( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
    if ( use_half == 0 ) {
       for ( i = 0; i < dico_size; i++ ) {
          dico_index = 3 * i;
-
          temp = lsf_r1[0] - dico[dico_index + 0];
          temp *= wf1[0];
          dist = temp * temp;
-
          temp = lsf_r1[1] - dico[dico_index + 1];
          temp *= wf1[1];
          dist += temp * temp;
-
          temp = lsf_r1[2] - dico[dico_index + 2];
          temp *= wf1[2];
          dist += temp * temp;
@@ -429,15 +423,12 @@ static Word16 Vq_subvec3( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
    else {
       for ( i = 0; i < dico_size; i++ ) {
          dico_index = 6 * i;
-
          temp = lsf_r1[0] - dico[dico_index + 0];
          temp *= wf1[0];
          dist = temp * temp;
-
          temp = lsf_r1[1] - dico[dico_index + 1];
          temp *= wf1[1];
          dist += temp * temp;
-
          temp = lsf_r1[2] - dico[dico_index + 2];
          temp *= wf1[2];
          dist += temp * temp;
@@ -460,28 +451,22 @@ static Word16 Vq_subvec3( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
 
 static Word16 Vq_subvec4( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Word16 dico_size )
 {
-   Float64 dist, dist_min;
-   Float32 temp;
    Word32 i, index = 0;
-   Word32 dico_index;
 
-   dist_min = FLT_MAX;
+   Float64 dist_min = FLT_MAX;
 
    for ( i = 0; i < dico_size; i++ ) {
-      dico_index = 4 * i;
+      Word32 dico_index = 4 * i;
 
-      temp = lsf_r1[0] - dico[dico_index + 0];
+      Float32 temp = lsf_r1[0] - dico[dico_index + 0];
       temp *= wf1[0];
-      dist = temp * temp;
-
+      Float64 dist = temp * temp;
       temp = lsf_r1[1] - dico[dico_index + 1];
       temp *= wf1[1];
       dist += temp * temp;
-
       temp = lsf_r1[2] - dico[dico_index + 2];
       temp *= wf1[2];
       dist += temp * temp;
-
       temp = lsf_r1[3] - dico[dico_index + 3];
       temp *= wf1[3];
       dist += temp * temp;
@@ -492,7 +477,7 @@ static Word16 Vq_subvec4( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
       }
    }
 
-   dico_index = 4 * index;
+   Word32 dico_index = 4 * index;
 
    lsf_r1[0] = dico[dico_index + 0];
    lsf_r1[1] = dico[dico_index + 1];
@@ -547,19 +532,17 @@ static void Q_plsf_3( enum ModeNB mode, Float32 *past_rq, Float32 *lsp1, Float32
       indice[0] = Vq_subvec3( &lsf_r1[0], dico1_lsf_3, &wf1[0], DICO1_SIZE_3, 0 );
       indice[1] = Vq_subvec3( &lsf_r1[3], dico2_lsf_3, &wf1[3], DICO2_SIZE_3 /2, 1 );
       indice[2] = Vq_subvec4( &lsf_r1[6], mr515_3_lsf, &wf1[6], MR515_3_SIZE );
-   }
-   else if ( mode == MR795 ) {
+   } else if ( mode == MR795 ) {
       indice[0] = Vq_subvec3( &lsf_r1[0], mr795_1_lsf, &wf1[0], MR795_1_SIZE, 0 );
       indice[1] = Vq_subvec3( &lsf_r1[3], dico2_lsf_3, &wf1[3], DICO2_SIZE_3, 0 );
       indice[2] = Vq_subvec4( &lsf_r1[6], dico3_lsf_3, &wf1[6], DICO3_SIZE_3 );
-   }
-   else { /* MR59, MR67, MR74, MR102 , MRDTX */
+   } else { /* MR59, MR67, MR74, MR102 , MRDTX */
       indice[0] = Vq_subvec3( &lsf_r1[0], dico1_lsf_3, &wf1[0], DICO1_SIZE_3, 0 );
       indice[1] = Vq_subvec3( &lsf_r1[3], dico2_lsf_3, &wf1[3], DICO2_SIZE_3, 0 );
       indice[2] = Vq_subvec4( &lsf_r1[6], dico3_lsf_3, &wf1[6], DICO3_SIZE_3 );
    }
 
-   for ( i = 0; i < M; i++ ) {
+   for ( Word32 i = 0; i < M; i++ ) {
       lsf1_q[i] = lsf_r1[i] + lsf_p[i];
       past_rq[i] = lsf_r1[i];
    }
@@ -841,7 +824,7 @@ static Word32 gmed_n( Word32 ind[], Word32 n )
    for ( Word32 i = 0; i < n; i++ ) {
       Word32 max = -32767;
 
-      for ( j = 0; j < n; j++ ) {
+      for ( Word32 j = 0; j < n; j++ ) {
          if ( tmp2[j] >= max ) {
             max = tmp2[j];
             ix = j;
@@ -881,11 +864,7 @@ static void subframePreProc( enum ModeNB mode, const Float32 gamma1[], const
 static void getRange( Word32 T0, Word16 delta_low, Word16 delta_range, Word16 pitmin, Word16 pitmax, Word32 *T0_min, Word32 *T0_max )
 {
    *T0_min = T0 - delta_low;
-
-   if ( *T0_min < pitmin ) {
-      *T0_min = pitmin;
-   }
-
+   CLIP_IF_LOWER(*T0_min, pitmin);
    *T0_max = *T0_min + delta_range;
 
    if ( *T0_max > pitmax ) {
@@ -968,37 +947,22 @@ static void searchFrac( Word32 *lag, Word32 *frac, Word16 last_frac, Float32 cor
       }
    }
 
-   if ( flag3 == 0 ) {
-      if ( *frac == -3 ) {
-         *frac = 3;
-         *lag -= 1;
-      }
-   }
-   else {
-      if ( *frac == -2 ) {
-         *frac = 1;
-         *lag -= 1;
-      }
-
-      if ( *frac == 2 ) {
-         *frac = -1;
-         *lag += 1;
-      }
-   }
+   *frac = (flag3 == 0) ? *frac == -3 ? 3 : *frac : *frac == -2 ? 1 : -1;
+   *lag -= (flag3 == 0) ? *frac == -3 ? 1 : 0 : *frac == -2 ? 1 : -1;
 }
 
 static Word32 Enc_lag3( Word32 T0, Word32 T0_frac, Word32 T0_prev, Word32 T0_min, Word32 T0_max, Word16 delta_flag, Word16 flag4 )
 {
-   Word32 index, i, tmp_ind, uplag, tmp_lag;
+   Word32 i, tmp_ind, uplag, tmp_lag;
 
    if ( delta_flag == 0 ) {
-      index = T0 <= 85
+      return T0 <= 85
          ? T0 * 3 - 58 + T0_frac
          : T0 + 112;
    }
    else {
       if ( flag4 == 0 ) {
-         index = 3 * ( T0 - T0_min ) + 2 + T0_frac;
+         return 3 * ( T0 - T0_min ) + 2 + T0_frac;
       } else {
          tmp_lag = T0_prev;
 
@@ -1010,31 +974,22 @@ static Word32 Enc_lag3( Word32 T0, Word32 T0_frac, Word32 T0_prev, Word32 T0_min
          tmp_ind = i + i + i;
 
          if ( tmp_ind >= uplag ) {
-            index = ( T0 - tmp_lag ) + 5;
+            return ( T0 - tmp_lag ) + 5;
          }
          else {
             i = tmp_lag + 1;
             i = i + i + i;
-            index = i > uplag ? ( uplag - tmp_ind ) + 3 : ( T0 - tmp_lag ) + 11;
+            return i > uplag ? ( uplag - tmp_ind ) + 3 : ( T0 - tmp_lag ) + 11;
          }
       }
    }
-   return index;
 }
 
 static Word32 Enc_lag6( Word32 T0, Word32 T0_frac, Word32 T0_min, Word16 delta_flag )
 {
-   if ( delta_flag == 0 ) {
-      if ( T0 <= 94 ) {
-         return T0 * 6 - 105 + T0_frac;
-      }
-      else {
-         return T0 + 368;
-      }
-   }
-   else {
-      return 6 * ( T0 - T0_min ) + 3 + T0_frac;
-   }
+   return delta_flag == 0
+      ? T0 <= 94 ? (T0 * 6 - 105 + T0_frac) : (T0 + 368)
+      : 6 * ( T0 - T0_min ) + 3 + T0_frac;
 }
 
 static Word32 Pitch_fr( Word32 *T0_prev_subframe, enum ModeNB mode, Word32 T_op[],
@@ -1226,11 +1181,8 @@ static Float32 G_pitch( Float32 xn[], Float32 y1[], Float32 gCoeff[] )
    gCoeff[1] = sum;
    Float32 gain = ( Float32 )( gCoeff[1] / gCoeff[0] );
 
-   if ( gain < 0.0 )
-      gain = 0.0F;
-
-   if ( gain > 1.2 )
-      gain = 1.2F;
+   CLIP_IF_LOWER(gain, 0.0);
+   CLIP_IF_HIGHER(gain, 1.2);
 
    return( gain );
 }
@@ -1388,8 +1340,7 @@ static void set_sign( Float32 dn[], Float32 sign[], Float32 dn2[], Word16 n )
 
       if ( val >= 0 ) {
          sign[i] = 1.0F;
-      }
-      else {
+      } else {
          sign[i] = -1.0F;
          val = -val;
       }
@@ -1404,7 +1355,7 @@ static void set_sign( Float32 dn[], Float32 sign[], Float32 dn2[], Word16 n )
 
          for ( j = i; j < L_CODE; j += STEP ) {
             if ( dn2[j] >= 0 ) {
-               val = dn2[j] - min;
+               Float32 val = dn2[j] - min;
 
                if ( val < 0 ) {
                   min = dn2[j];
@@ -1561,7 +1512,7 @@ static void code_2i40_9bits( Word16 subNr, Float32 x[], Float32 h[], Word32 T0, 
       build_code_2i40_9bits( subNr, codvec, dn_sign, code, h, y, anap );
 
       if ( ( T0 < L_CODE ) && ( pitch_sharp != 0.0F ) )
-         for ( i = T0; i < L_CODE; i++ ) {
+         for ( Word32 i = T0; i < L_CODE; i++ ) {
             code[i] += code[i - T0] * pitch_sharp;
          }
    }
@@ -1638,26 +1589,16 @@ static void build_code_2i40_11bits( Word32 codvec[], Float32 dn_sign[], Float32 
       if ( track == 0 ) {
          track = 1;
          index = index << 6;
-      }
-      else if ( track == 1 ) {
-         if ( k == 0 ) {
-            track = 0;
-            index = index << 1;
-         }
-         else {
-            track = 1;
-            index = ( index << 6 ) + 16;
-         }
-      }
-      else if ( track == 2 ) {
+      } else if ( track == 1 ) {
+         track = k == 0 ? 0 : 1;
+         index = k == 0 ? index << 1 : ( index << 6 ) + 16;
+      } else if ( track == 2 ) {
          track = 1;
          index = ( index << 6 ) + 32;
-      }
-      else if ( track == 3 ) {
+      } else if ( track == 3 ) {
          track = 0;
          index = ( index << 1 ) + 1;
-      }
-      else if ( track == 4 ) {
+      } else if ( track == 4 ) {
          track = 1;
          index = ( index << 6 ) + 48;
       }
@@ -1704,7 +1645,7 @@ static void code_2i40_11bits( Float32 x[], Float32 h[], Word32 T0, Float32 pitch
    build_code_2i40_11bits( codvec, dn_sign, code, h, y, anap );
 
    if ( ( T0 < L_CODE ) && ( pitch_sharp != 0.0F ) ) {
-      for ( i = T0; i < L_CODE; i++ ) {
+      for ( Word32 i = T0; i < L_CODE; i++ ) {
          code[i] = code[i] + code[i - T0] * pitch_sharp;
       }
    }
@@ -1829,12 +1770,10 @@ static void build_code_3i40_14bits( Word32 codvec[], Float32 dn_sign[], Float32 
       else if ( track == 2 ) {
          track = 2;
          index = index << 8;
-      }
-      else if ( track == 3 ) {
+      } else if ( track == 3 ) {
          track = 1;
          index = ( index << 4 ) + 8;
-      }
-      else if ( track == 4 ) {
+      } else if ( track == 4 ) {
          track = 2;
          index = ( index << 8 ) + 128;
       }
@@ -2202,14 +2141,11 @@ static void search_8i40( Float32 dn[], Float32 rr[][L_CODE], Word32 ipos[], Word
 
       for ( i4 = ipos[4]; i4 < L_CODE; i4 += 4 ) {
          ps1 = ps0 + dn[i4];
-
          alp1 = alp0 + rr[i4][i4] + 2.0F * ( rr[i0][i4] + rr[i1][i4] + rr[i2][i4] + rr[i3][i4] );
 
          for ( i5 = ipos[5]; i5 < L_CODE; i5 += 4 ) {
-
             ps2 = ps1 + dn[i5];
             sq2 = ps2 * ps2;
-
             alp2 = alp1 + rr[i5][i5] + 2.0F * ( rr[i0][i5] + rr[i1][i5] + rr[i2][i5] + rr[i3][i5] + rr[i4][i5] );
 
             if ( alp * sq2 > sq * alp2 ) {
@@ -2392,7 +2328,7 @@ static void compress_code( Word32 sign_indx[], Word32 pos_indx[], Word16 indx[])
    indx[NB_TRACK_MR102 + 1] = compress10( pos_indx[2], pos_indx[6], pos_indx[5] );
 
    Word32 ib = ( pos_indx[7] >> 1 ) & 1;
-   Word32 ia = (ib == 1) ? 4 - ( pos_indx[3] >> 1 ) : pos_indx[3] >> 1
+   Word32 ia = (ib == 1) ? 4 - ( pos_indx[3] >> 1 ) : pos_indx[3] >> 1;
    ib = ( ( pos_indx[7] >> 1 ) * 5 );
    ib = ( ( ia + ib ) << 5 ) + 12;
    Word32 ic = ( ( ib * 1311 ) >> 15 ) << 2;
@@ -2733,11 +2669,7 @@ static Word32 Pow2( Word32 exponent, Word32 fraction )
 
    if ( exponent >= -1 ) {
       exp = ( 30 - exponent );
-
-      if ( ( x & ( ( Word32 )1 << ( exp - 1 ) ) ) != 0 ) {
-         return ( x >> exp ) + 1;
-      } else
-         return x >> exp;
+      return ( x & ( ( Word32 )1 << ( exp - 1 ) ) ) != 0 ? (x >> exp) + 1 : x >> exp;
    }
    else
       return 0;
@@ -2804,13 +2736,7 @@ static void gc_pred( Word32 *past_qua_en, enum ModeNB mode, Float32 *code, Word3
       tmp += 1556 * qua_gain_code[past_qua_en[3]];
 
       tmp = tmp >> 15;   /* Q8  */
-
-      if ( mode == MR74 ) {
-         tmp = tmp * 10878;
-      }
-      else {
-         tmp = tmp * 10886;
-      }
+      tmp *= (mode == MR74) ? 10878 : 10886;
       tmp = tmp >> 9;   /* -> Q15 */
 
       *gcode0_exp = tmp >> 15;
@@ -2899,11 +2825,11 @@ static Word16 MR475_gain_quant( Word32 *past_qua_en, Word32 sf0_gcode0_exp, Word
 
    if ( ( sf0_target_en * 2.0F ) < sf1_target_en ) {
       for ( i = 0; i < 5; i++ )
-         sf0_coeff[i] *= 2f;
+         sf0_coeff[i] *= 2.0f;
    }
    else if ( sf0_target_en > ( sf1_target_en * 4.0F ) ) {
       for ( i = 0; i < 5; i++ )
-         sf1_coeff[i] *= 2f;
+         sf1_coeff[i] *= 2.0f;
    }
 
    dist_min = FLT_MAX;
@@ -2973,8 +2899,7 @@ static Word16 MR475_gain_quant( Word32 *past_qua_en, Word32 sf0_gcode0_exp, Word
    gcode0 = Pow2( 14, sf1_gcode0_fra );
    if ( sf1_gcode0_exp < 11 ) {
       *sf1_gain_cod = (Float32)(( g_code_tmp * gcode0 ) >> ( 25 - sf1_gcode0_exp ));
-   }
-   else {
+   } else {
       i = ( ( g_code_tmp * gcode0 ) << ( sf1_gcode0_exp - 9 ) );
       *sf1_gain_cod = ( i >> ( sf1_gcode0_exp - 9 ) ) != ( g_code_tmp * gcode0 ) ? (Float32)0x7FFF : (Float32)(i >> 16);
    }
@@ -2994,7 +2919,6 @@ static Word16 q_gain_code( Float32 gcode0, Float32 *gain, Word32 *qua_ener_index
    Float64 err_min, err;
    const Float32 *p;
    Word32 i, index;
-
 
    p = &gain_factor[0];
 
@@ -3063,11 +2987,8 @@ static void MR795_gain_code_quant3( Word32 gcode0_exp, Word32 gcode0_fra, Float3
    gcode0_exp = 9 - gcode0_exp;
    i = gcode0_exp > 0 ? i >> gcode0_exp : i << -gcode0_exp;
    *gain_cod = (Float32)(i >> 16);
-   if (*gain_cod > 32767)
-      *gain_cod = 32767;
-
+   CLIP_IF_HIGHER(*gain_cod, 32767);
    *gain_cod *= 0.5F;
-
    *gain_cod_ind = ( Word16 )cod_ind;
    *gain_pit = g_pitch_cand[pit_ind];
    *gain_pit_ind = g_pitch_cind[pit_ind];
@@ -3133,11 +3054,7 @@ static void gain_adapt( Float32 *prev_gc, Word16 *onset, Float32 *ltpg_mem, Floa
    if ( ltpg <= 0.3321928F /*LTP_GAIN_THR1*/ ) {
       adapt = 0;
    } else {
-      if ( ltpg <= 0.6643856 /*LTP_GAIN_THR2*/ ) {
-         adapt = 1;
-      } else {
-         adapt = 2;
-      }
+      adapt = ltpg <= 0.6643856 ? 1 : 2;
    }
 
    if ( ( gain_cod > 2.0F * *prev_gc ) && ( gain_cod > 100 ) ) {
@@ -3155,11 +3072,7 @@ static void gain_adapt( Float32 *prev_gc, Word16 *onset, Float32 *ltpg_mem, Floa
    filt = gmed_n_f( ltpg_mem, 5 );
 
    if ( adapt == 0 ) {
-      if ( filt > 0.66443 ) {
-         result = 0;
-      } else {
-         result = filt < 0 ? 0.5 : ( Float32 )( 0.5-0.75257499*filt );
-      }
+      result = filt > 0.66443 ? 0 : filt < 0 ? 0.5 : ( Float32 )( 0.5-0.75257499*filt );
    } else {
       result = 0;
    }
@@ -3230,8 +3143,7 @@ static Word16 MR795_gain_code_quant_mod( Float32 gain_pit, Word32 gcode0_exp, Wo
    i = gcode0_exp > 0 ? i >> gcode0_exp : i << ( -gcode0_exp );
 
    *gain_cod = (Float32)(i >> 16);
-   if (*gain_cod > 32767)
-      *gain_cod = 32767;
+   CLIP_IF_HIGHER(*gain_cod, 32767);
 
    *gain_cod *= 0.5F;
    return( Word16 )index;
@@ -4126,8 +4038,7 @@ void Speech_Encode_Frame_exit( void **st )
    *st = NULL;
 }
 
-void Speech_Encode_Frame( void *st, enum ModeNB mode, Word16 *new_speech, Word16 *
-      prm, enum ModeNB *used_mode )
+void Speech_Encode_Frame( void *st, enum ModeNB mode, Word16 *new_speech, Word16 *prm, enum ModeNB *used_mode )
 {
    Float32 syn[L_FRAME];   /* Buffer for synthesis speech */
    Float32 speech[160];
