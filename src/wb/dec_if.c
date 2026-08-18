@@ -63,36 +63,16 @@ extern const Word16 dfh_M18k[];
 extern const Word16 dfh_M20k[];
 extern const Word16 dfh_M23k[];
 extern const Word16 dfh_M24k[];
-
-/* overall table with the parameters of the
-   decoder homing frames for all modes */
-
 extern const Word16 *dhf[10];
 
-/*
- * Decoder_Interface_Homing_Frame_test
- *
- * Parameters:
- *    input_frame    I: input parameters
- *    mode           I: speech mode
- *
- * Function:
- *    Check parameters for matching homing frame
- *
- * Returns:
- *    If homing frame
- */
 Word16 D_IF_homing_frame_test(Word16 input_frame[], Word16 mode)
 {
-
    if (mode != MODE_24k)
    {
-      /* perform test for COMPLETE parameter frame */
       return (Word16)!memcmp(input_frame, dhf[mode], nb_of_param[mode] * sizeof(Word16));
    }
    else
    {
-      /* discard high-band energy */
       return (Word16)!(
          (memcmp(input_frame, dhf[MODE_24k], 19 * sizeof(Word16))) |
          (memcmp(input_frame + 20, dhf[MODE_24k] + 20, 11 * sizeof(Word16))) |
@@ -102,7 +82,6 @@ Word16 D_IF_homing_frame_test(Word16 input_frame[], Word16 mode)
    }
 }
 
-
 Word16 D_IF_homing_frame_test_first(Word16 input_frame[], Word16 mode)
 {
    /* perform test for FIRST SUBFRAME of parameter frame ONLY */
@@ -110,23 +89,7 @@ Word16 D_IF_homing_frame_test_first(Word16 input_frame[], Word16 mode)
 }
 
 #ifdef IF2
-/*
- * D_IF_conversion
- *
- *
- * Parameters:
- *    param             O: AMR parameters
- *    stream            I: input bitstream
- *    frame_type        O: frame type
- *    speech_mode       O: speech mode in DTX
- *    fqi               O: frame quality indicator
- *
- * Function:
- *    Unpacks IF2 octet stream
- *
- * Returns:
- *    mode              used mode
- */
+
 Word16 D_IF_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
                        Word16 *speech_mode, Word16 *fqi)
 {
@@ -136,7 +99,7 @@ Word16 D_IF_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
 
    memset(param, 0, PRMNO_24k << 1);
    mode = *stream >> 4;
-   /* SID indication IF2 corresponds to mode 10 */
+
    if (mode == 9)
    {
       mode ++;
@@ -168,8 +131,6 @@ Word16 D_IF_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
             stream++;
          }
       }
-
-      /* get SID type bit */
 
       *frame_type = RX_SID_FIRST;
 
@@ -440,23 +401,6 @@ Word16 D_IF_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
 
 #else
 
-/*
- * D_IF_mms_conversion
- *
- *
- * Parameters:
- *    param             O: AMR parameters
- *    stream            I: input bitstream
- *    frame_type        O: frame type
- *    speech_mode       O: speech mode in DTX
- *    fqi               O: frame quality indicator
- *
- * Function:
- *    Unpacks MMS formatted octet stream (see RFC 3267, section 5.3)
- *
- * Returns:
- *    mode              used mode
- */
 Word16 D_IF_mms_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
                            Word16 *speech_mode, Word16 *fqi)
 {
@@ -469,7 +413,6 @@ Word16 D_IF_mms_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
    *fqi = (Word16)((*stream >> 2) & 0x01);
    mode = (Word32)((*stream >> 3) & 0x0F);
 
-   /* SID indication IF2 corresponds to mode 10 */
    if (mode == 9)
    {
       mode ++;
@@ -501,8 +444,6 @@ Word16 D_IF_mms_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
          }
       }
 
-      /* get SID type bit */
-
       *frame_type = RX_SID_FIRST;
 
       if (*stream & 0x80)
@@ -512,7 +453,6 @@ Word16 D_IF_mms_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
 
       *stream <<= 1;
 
-      /* speech mode indicator */
       *speech_mode = (Word16)(*stream >> 4);
       break;
 
@@ -772,27 +712,6 @@ Word16 D_IF_mms_conversion(Word16 *param, UWord8 *stream, UWord8 *frame_type,
 
 #endif
 
-/*
- * D_IF_decode
- *
- *
- * Parameters:
- *    st       B: pointer to state structure
- *    bits     I: bitstream form the encoder
- *    synth    O: decoder output
- *    lfi      I: lost frame indicator
- *                _good_frame, _bad_frame, _lost_frame, _no_frame
- *
- * Function:
- *    Decoding one frame of speech. Lost frame indicator can be used
- *    to inform encoder about the problems in the received frame.
- *    _good_frame:good speech or sid frame is received.
- *    _bad_frame: frame with possible bit errors
- *    _lost_frame:speech of sid frame is lost in transmission
- *    _no_frame:  indicates non-received frames in dtx-operation
- * Returns:
- *
- */
 void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
 {
    Word32 i;
@@ -808,19 +727,13 @@ void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
 
    s = (WB_dec_if_state*)st;
 
-   /* bits -> param, if needed */
    if ((lfi == _good_frame) | (lfi == _bad_frame))
    {
-      /* add fqi data */
 #ifdef IF2
       *bits = (UWord8)((Word32)*bits & ~(lfi << 3));
 #else
       *bits = (UWord8)((Word32)*bits & ~(lfi << 2));
 #endif
-      /*
-       * extract mode information and frame_type,
-       * octets to parameters
-       */
 #ifdef IF2
       mode = D_IF_conversion( prm, bits, &frame_type, &speech_mode, &fqi);
 #else
@@ -837,10 +750,6 @@ void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
       frame_type = RX_SPEECH_LOST;
    }
 
-   /*
-    * if no mode information
-    * guess one from the previous frame
-    */
    if ((frame_type == RX_SPEECH_LOST) | (frame_type == RX_NO_DATA))
    {
       mode = s->prev_mode;
@@ -851,14 +760,11 @@ void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
       mode = speech_mode;
    }
 
-   /* if homed: check if this frame is another homing frame */
    if (s->reset_flag_old == 1)
    {
-      /* only check until end of first subframe */
       reset_flag = D_IF_homing_frame_test_first(prm, mode);
    }
 
-   /* produce encoder homing frame if homed & input=decoder homing frame */
    if ((reset_flag != 0) && (s->reset_flag_old != 0))
    {
       for (i = 0; i < L_FRAME16k; i++)
@@ -871,18 +777,16 @@ void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
       D_MAIN_decode(mode, prm, synth, s->decoder_state, frame_type);
    }
 
-   for (i = 0; i < L_FRAME16k; i++)   /* Delete the 2 LSBs (14-bit input) */
+   for (i = 0; i < L_FRAME16k; i++)
    {
       synth[i] = (Word16) (synth[i] & 0xfffC);
    }
 
-   /* if not homed: check whether current frame is a homing frame */
    if ((s->reset_flag_old == 0) & (mode < 9))
    {
-      /* check whole frame */
       reset_flag = D_IF_homing_frame_test(prm, mode);
    }
-   /* reset decoder if current frame is a homing frame */
+
    if (reset_flag != 0)
    {
       D_MAIN_reset(s->decoder_state, 1);
@@ -893,18 +797,6 @@ void D_IF_decode( void *st, UWord8 *bits, Word16 *synth, Word32 lfi)
    s->prev_mode = mode;
 }
 
-/*
- * D_IF_reset
- *
- * Parameters:
- *    st                O: state struct
- *
- * Function:
- *    Reset homing frame counter
- *
- * Returns:
- *    void
- */
 void D_IF_reset(WB_dec_if_state *st)
 {
    st->reset_flag_old = 1;
@@ -912,22 +804,10 @@ void D_IF_reset(WB_dec_if_state *st)
    st->prev_mode = MODE_7k;   /* minimum bitrate */
 }
 
-/*
- * D_IF_init
- *
- * Parameters:
- *
- * Function:
- *    Allocates state memory and initializes state memory
- *
- * Returns:
- *    pointer to encoder interface structure
- */
 void *D_IF_init( void)
 {
    WB_dec_if_state *s = NULL;
 
-   /* allocate memory */
    if ((s = (WB_dec_if_state*) malloc(sizeof(WB_dec_if_state))) == NULL)
    {
       return NULL;
@@ -945,25 +825,12 @@ void *D_IF_init( void)
    return s;
 }
 
-/*
- * D_IF_exit
- *
- * Parameters:
- *    state             I: state structure
- *
- * Function:
- *    The memory used for state memory is freed
- *
- * Returns:
- *    Void
- */
 void D_IF_exit(void *state)
 {
    WB_dec_if_state *s;
 
    s = (WB_dec_if_state *)state;
 
-   /* free memory */
    D_MAIN_close(&s->decoder_state);
    free(s);
    state = NULL;

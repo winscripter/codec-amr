@@ -20,9 +20,6 @@
  *    bitstream to AMR parameters
  */
 
-/*
- * include files
- */
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
@@ -31,41 +28,20 @@
 #include "interf_rom.h"
 #include "rom_dec.h"
 
-/*
- * definition of constants
- */
 #define EHF_MASK 0x0008 /* encoder homing frame pattern */
 typedef
 
 struct
 {
-   int reset_flag_old;   /* previous was homing frame */
-
-
+   int reset_flag_old;
    enum RXFrameType prev_ft;   /* previous frame type */
    enum ModeNB prev_mode;   /* previous mode */
    void *decoder_State;   /* Points decoder state */
-
-
-}dec_interface_State;
+}
+dec_interface_State;
 
 #ifdef ETSI
 
-
-/*
- * Bin2Int
- *
- *
- * Parameters:
- *    no_of_bits        I: number of bits associated with value
- *    bits              O: address where bits are written
- *
- * Function:
- *    Read nuber of bits from the array and convert to integer.
- *
- * Returns:
- *    value
- */
 static Word16 Bin2Int( Word16 no_of_bits, Word16 *bitstream )
 {
    Word32 value, i, bit;
@@ -83,27 +59,9 @@ static Word16 Bin2Int( Word16 no_of_bits, Word16 *bitstream )
    return( Word16 )( value );
 }
 
-
-/*
- * Bits2Prm
- *
- *
- * Parameters:
- *    mode              I: AMR mode
- *    bits              I: serial bits
- *    param             O: AMR parameters
- *
- * Function:
- *    Retrieves the vector of encoder parameters from
- *    the received serial bits in a frame.
- *
- * Returns:
- *    void
- */
 static void Bits2Prm( enum Mode mode, Word16 bits[], Word16 prm[] )
 {
    Word32 i;
-
 
    switch ( mode ) {
       case MR122:
@@ -176,29 +134,11 @@ static void Bits2Prm( enum Mode mode, Word16 bits[], Word16 prm[] )
 
 #ifndef IF2
 
-/*
- * DecoderMMS
- *
- *
- * Parameters:
- *    param             O: AMR parameters
- *    stream            I: input bitstream
- *    frame_type        O: frame type
- *    speech_mode       O: speech mode in DTX
- *
- * Function:
- *    AMR file storage format frame to decoder parameters
- *
- * Returns:
- *    mode              used mode
- */
-enum ModeNB DecoderMMS( Word16 *param, UWord8 *stream, enum RXFrameType
-                      *frame_type, enum ModeNB *speech_mode, Word16 *q_bit )
+enum ModeNB DecoderMMS( Word16 *param, UWord8 *stream, enum RXFrameType *frame_type, enum ModeNB *speech_mode, Word16 *q_bit )
 {
    enum ModeNB mode;
    Word32 j;
    Word16 *mask;
-
 
    memset( param, 0, PRMNO_MR122 <<1 );
    *q_bit = 0x01 & (*stream >> 2);
@@ -219,16 +159,10 @@ enum ModeNB DecoderMMS( Word16 *param, UWord8 *stream, enum RXFrameType
             stream++;
       }
 
-      /* get SID type bit */
-
       *frame_type = RX_SID_FIRST;
       if (*stream & 0x80)
          *frame_type = RX_SID_UPDATE;
 
-      /* since there is update, use it */
-      /* *frame_type = RX_SID_UPDATE; */
-
-      /* speech mode indicator */
 	  *speech_mode = (*stream >> 4) && 0x07;
 
    }
@@ -362,29 +296,11 @@ enum ModeNB DecoderMMS( Word16 *param, UWord8 *stream, enum RXFrameType
 
 #else
 
-/*
- * Decoder3GPP
- *
- *
- * Parameters:
- *    param             O: AMR parameters
- *    stream            I: input bitstream
- *    frame_type        O: frame type
- *    speech_mode       O: speech mode in DTX
- *
- * Function:
- *    Resets state memory
- *
- * Returns:
- *    mode              used mode
- */
-enum Mode Decoder3GPP( Word16 *param, UWord8 *stream, enum RXFrameType
-                      *frame_type, enum Mode *speech_mode )
+enum Mode Decoder3GPP( Word16 *param, UWord8 *stream, enum RXFrameType *frame_type, enum Mode *speech_mode )
 {
    enum Mode mode;
    Word32 j;
    Word16 *mask;
-
 
    memset( param, 0, PRMNO_MR122 <<1 );
    mode = 0xF & *stream;
@@ -404,17 +320,11 @@ enum Mode Decoder3GPP( Word16 *param, UWord8 *stream, enum RXFrameType
             stream++;
       }
 
-      /* get SID type bit */
-
       *frame_type = RX_SID_FIRST;
       if (*stream)
          *frame_type = RX_SID_UPDATE;
 
-      /* since there is update, use it */
-      /* *frame_type = RX_SID_UPDATE; */
       stream++;
-
-      /* speech mode indicator */
       *speech_mode = *stream;
    }
    else if ( mode == 15 ) {
@@ -547,19 +457,6 @@ enum Mode Decoder3GPP( Word16 *param, UWord8 *stream, enum RXFrameType
 #endif
 #endif
 
-/*
- * Decoder_Interface_reset
- *
- *
- * Parameters:
- *    st                O: state struct
- *
- * Function:
- *    Reset homing frame counter
- *
- * Returns:
- *    void
- */
 void Decoder_Interface_reset( dec_interface_State *st )
 {
    st->reset_flag_old = 1;
@@ -567,26 +464,10 @@ void Decoder_Interface_reset( dec_interface_State *st )
    st->prev_mode = MR475;   /* minimum bitrate */
 }
 
-
-/*
- * Decoder_Interface_init
- *
- *
- * Parameters:
- *    void
- *
- * Function:
- *    Allocates state memory and initializes state memory
- *
- * Returns:
- *    success           : pointer to structure
- *    failure           : NULL
- */
 void * Decoder_Interface_init( void )
 {
    dec_interface_State * s;
 
-   /* allocate memory */
    if ( ( s = ( dec_interface_State * ) malloc( sizeof( dec_interface_State ) ) ) ==
          NULL ) {
       fprintf( stderr, "Decoder_Interface_init: "
@@ -603,49 +484,17 @@ void * Decoder_Interface_init( void )
    return s;
 }
 
-
-/*
- * Decoder_Interface_exit
- *
- *
- * Parameters:
- *    state                I: state structure
- *
- * Function:
- *    The memory used for state memory is freed
- *
- * Returns:
- *    Void
- */
 void Decoder_Interface_exit( void *state )
 {
    dec_interface_State * s;
    s = ( dec_interface_State * )state;
 
-   /* free memory */
    Speech_Decode_Frame_exit(s->decoder_State );
    free( s );
    s = NULL;
    state = NULL;
 }
 
-
-/*
- * Decoder_Interface_Decode
- *
- *
- * Parameters:
- *    st                B: state structure
- *    bits              I: bit stream
- *    synth             O: synthesized speech
- *    bfi               I: bad frame indicator
- *
- * Function:
- *    Decode bit stream to synthesized speech
- *
- * Returns:
- *    Void
- */
 void Decoder_Interface_Decode( void *st,
 
 #ifndef ETSI
@@ -683,10 +532,6 @@ void Decoder_Interface_Decode( void *st,
 
 #ifndef ETSI
 
-   /*
-    * extract mode information and frametype,
-    * octets to parameters
-    */
 #ifdef IF2
    mode = Decoder3GPP( prm, bits, &frame_type, &speech_mode );
 #else
@@ -709,10 +554,6 @@ void Decoder_Interface_Decode( void *st,
        else if ( frame_type == RX_NO_DATA ) {
            mode = s->prev_mode;
        }
-       /*
-        * if no mode information
-        * guess one from the previous frame
-        */
        if ( frame_type == RX_SPEECH_BAD ) {
           mode = s->prev_mode;
           if ( s->prev_ft >= RX_SID_FIRST ) {
@@ -749,7 +590,6 @@ void Decoder_Interface_Decode( void *st,
    }
 #endif
 
-   /* test for homing frame */
    if ( s->reset_flag_old == 1 ) {
       switch ( mode ) {
          case MR122:
@@ -815,7 +655,6 @@ void Decoder_Interface_Decode( void *st,
       Speech_Decode_Frame( s->decoder_State, mode, prm, frame_type, synth );
 
    if ( s->reset_flag_old == 0 ) {
-      /* check whole frame */
       switch ( mode ) {
          case MR122:
             homing = dhf_MR122;
@@ -870,7 +709,6 @@ void Decoder_Interface_Decode( void *st,
       }
    }
 
-   /* reset decoder if current frame is a homing frame */
    if ( resetFlag == 0 ) {
       Speech_Decode_Frame_reset( s->decoder_State );
    }

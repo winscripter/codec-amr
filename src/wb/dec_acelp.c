@@ -13,30 +13,12 @@
 extern const Word16 D_ROM_ph_imp_low[];
 extern const Word16 D_ROM_ph_imp_mid[];
 
-
-/*
- * D_ACELP_add_pulse
- *
- * Parameters:
- *    pos         I: position of pulse
- *    nb_pulse    I: number of pulses
- *    track       I: track
- *    code        O: fixed codebook
- *
- * Function:
- *    Add pulses to fixed codebook
- *
- * Returns:
- *    void
- */
 static void D_ACELP_add_pulse(Word32 pos[], Word32 nb_pulse,
                               Word32 track, Word16 code[])
 {
    Word32 i, k;
 
-   for(k = 0; k < nb_pulse; k++)
-   {
-      /* i = ((pos[k] & (16-1))*NB_TRACK) + track; */
+   for(k = 0; k < nb_pulse; k++) {
       i = ((pos[k] & (16 - 1)) << 2) + track;
 
       if((pos[k] & 16) == 0)
@@ -48,27 +30,8 @@ static void D_ACELP_add_pulse(Word32 pos[], Word32 nb_pulse,
          code[i] = (Word16)(code[i] - 512);
       }
    }
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_1p_N1
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
-
- *
- * Function:
- *    Decode 1 pulse with N+1 bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_1p_N1(Word32 index, Word32 N,
                                  Word32 offset, Word32 pos[])
 {
@@ -76,9 +39,6 @@ static void D_ACELP_decode_1p_N1(Word32 index, Word32 N,
 
    mask = ((1 << N) - 1);
 
-   /*
-    * Decode 1 pulse with N+1 bits
-    */
    pos1 = ((index & mask) + offset);
    i = ((index >> N) & 1);
 
@@ -88,26 +48,8 @@ static void D_ACELP_decode_1p_N1(Word32 index, Word32 N,
    }
 
    pos[0] = pos1;
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_2p_2N1
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 2 pulses with 2*N+1 bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_2p_2N1(Word32 index, Word32 N,
                                   Word32 offset, Word32 pos[])
 {
@@ -116,9 +58,6 @@ static void D_ACELP_decode_2p_2N1(Word32 index, Word32 N,
 
    mask = ((1 << N) - 1);
 
-   /*
-    * Decode 2 pulses with 2*N+1 bits
-    */
    pos1 = (((index >> N) & mask) + offset);
    i = (index >> (2 * N)) & 1;
    pos2 = ((index & mask) + offset);
@@ -145,34 +84,13 @@ static void D_ACELP_decode_2p_2N1(Word32 index, Word32 N,
 
    pos[0] = pos1;
    pos[1] = pos2;
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_3p_3N1
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 3 pulses with 3*N+1 bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_3p_3N1(Word32 index, Word32 N,
                                   Word32 offset, Word32 pos[])
 {
    Word32 j, mask, idx;
 
-   /*
-    * Decode 3 pulses with 3*N+1 bits
-    */
    mask = ((1 << ((2 * N) - 1)) - 1);
    idx = index & mask;
    j = offset;
@@ -186,34 +104,13 @@ static void D_ACELP_decode_3p_3N1(Word32 index, Word32 N,
    mask = ((1 << (N + 1)) - 1);
    idx = (index >> (2 * N)) & mask;
    D_ACELP_decode_1p_N1(idx, N, offset, pos + 2);
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_4p_4N1
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 4 pulses with 4*N+1 bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_4p_4N1(Word32 index, Word32 N,
                                   Word32 offset, Word32 pos[])
 {
    Word32 j, mask, idx;
 
-   /*
-    * Decode 4 pulses with 4*N+1 bits
-    */
    mask = ((1 << ((2 * N) - 1)) - 1);
    idx = index & mask;
    j = offset;
@@ -227,34 +124,13 @@ static void D_ACELP_decode_4p_4N1(Word32 index, Word32 N,
    mask = ((1 << ((2 * N) + 1)) - 1);
    idx = (index >> (2 * N)) & mask;
    D_ACELP_decode_2p_2N1(idx, N, offset, pos + 2);
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_4p_4N
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 4 pulses with 4*N bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_4p_4N(Word32 index, Word32 N,
                                  Word32 offset, Word32 pos[])
 {
    Word32 j, n_1;
 
-   /*
-    * Decode 4 pulses with 4*N bits
-    */
    n_1 = N - 1;
    j = offset + (1 << n_1);
 
@@ -286,26 +162,8 @@ static void D_ACELP_decode_4p_4N(Word32 index, Word32 N,
       D_ACELP_decode_1p_N1(index, n_1, j, pos + 3);
       break;
    }
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_5p_5N
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 5 pulses with 5*N bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_5p_5N(Word32 index, Word32 N,
                                  Word32 offset, Word32 pos[])
 {
@@ -329,26 +187,8 @@ static void D_ACELP_decode_5p_5N(Word32 index, Word32 N,
       D_ACELP_decode_3p_3N1(idx, n_1, j, pos);
       D_ACELP_decode_2p_2N1(index, N, offset, pos + 3);
    }
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_6p_6N_2
- *
- * Parameters:
- *    index    I: pulse index
- *    N        I: number of bits for position
- *    offset   I: offset
- *    pos      O: position of the pulse
- *
- * Function:
- *    Decode 6 pulses with 6*N-2 bits
- *
- * Returns:
- *    void
- */
 static void D_ACELP_decode_6p_6N_2(Word32 index, Word32 N,
                                    Word32 offset, Word32 pos[])
 {
@@ -389,41 +229,14 @@ static void D_ACELP_decode_6p_6N_2(Word32 index, Word32 N,
          D_ACELP_decode_3p_3N1(index, n_1, j, pos + 3);
          break;
    }
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_2t
- *
- * Parameters:
- *    index          I: 12 bits index
- *    code           O: (Q9) algebraic (fixed) codebook excitation
- *
- * Function:
- *    12 bits algebraic codebook decoder.
- *    2 tracks x 32 positions per track = 64 samples.
- *
- *    12 bits --> 2 pulses in a frame of 64 samples.
- *
- *    All pulses can have two (2) possible amplitudes: +1 or -1.
- *    Each pulse can have 32 possible positions.
- *
- *    codevector length    64
- *    number of track      2
- *    number of position   32
- *
- * Returns:
- *    void
- */
 void D_ACELP_decode_2t(Word16 index, Word16 code[])
 {
    Word32 i0, i1;
 
    memset(code, 0, 64 * sizeof(Word16));
 
-   /* decode the positions and signs of pulses and build the codeword */
    i0 = (index >> 5) & 0x0000003E;
    i1 = ((index & 0x0000001F) << 1) + 1;
 
@@ -444,48 +257,14 @@ void D_ACELP_decode_2t(Word16 index, Word16 code[])
    {
       code[i1] = -512;
    }
-
-   return;
 }
 
-
-/*
- * D_ACELP_decode_4t
- *
- * Parameters:
- *    index          I: index
- *    mode           I: speech mode
- *    code           I: (Q9) algebraic (fixed) codebook excitation
- *
- * Function:
- *    20, 36, 44, 52, 64, 72, 88 bits algebraic codebook.
- *    4 tracks x 16 positions per track = 64 samples.
- *
- *    20 bits 5+5+5+5 --> 4 pulses in a frame of 64 samples.
- *    36 bits 9+9+9+9 --> 8 pulses in a frame of 64 samples.
- *    44 bits 13+9+13+9 --> 10 pulses in a frame of 64 samples.
- *    52 bits 13+13+13+13 --> 12 pulses in a frame of 64 samples.
- *    64 bits 2+2+2+2+14+14+14+14 --> 16 pulses in a frame of 64 samples.
- *    72 bits 10+2+10+2+10+14+10+14 --> 18 pulses in a frame of 64 samples.
- *    88 bits 11+11+11+11+11+11+11+11 --> 24 pulses in a frame of 64 samples.
- *
- *    All pulses can have two (2) possible amplitudes: +1 or -1.
- *    Each pulse can sixteen (16) possible positions.
- *
- *    codevector length    64
- *    number of track      4
- *    number of position   16
- *
- * Returns:
- *    void
- */
 void D_ACELP_decode_4t(Word16 index[], Word16 nbbits, Word16 code[])
 {
    Word32 k, L_index, pos[6];
 
    memset(code, 0, 64 * sizeof(Word16));
 
-   /* decode the positions and signs of pulses and build the codeword */
    if(nbbits == 20)
    {
       for(k = 0; k < 4; k++)
@@ -563,32 +342,9 @@ void D_ACELP_decode_4t(Word16 index[], Word16 nbbits, Word16 code[])
          D_ACELP_add_pulse(pos, 6, k, code);
       }
    }
-   return;
 }
 
-
-/*
- * D_ACELP_phase_dispersion
- *
- * Parameters:
- *    gain_code         I: (Q0) gain of code
- *    gain_pit          I: (Q14) gain of pitch
- *    code            I/O: code vector
- *    mode              I: level, 0=hi, 1=lo, 2=off
- *    disp_mem        I/O: static memory (size = 8)
- *
- * Function:
- *    An adaptive anti-sparseness post-processing procedure is
- *    applied to the fixed codebook vector in order to
- *    reduce perceptual artifacts arising from the sparseness
- *    of the algebraic fixed codebook vectors with only
- *    a few non-zero samples per subframe.
- *
- * Returns:
- *    void
- */
-void D_ACELP_phase_dispersion(Word16 gain_code, Word16 gain_pit, Word16 code[],
-                              Word16 mode, Word16 disp_mem[])
+void D_ACELP_phase_dispersion(Word16 gain_code, Word16 gain_pit, Word16 code[], Word16 mode, Word16 disp_mem[])
 {
    Word32 code2[2 * L_SUBFR] = {0};
    Word32 i, j, state;
@@ -648,7 +404,6 @@ void D_ACELP_phase_dispersion(Word16 gain_code, Word16 gain_pit, Word16 code[],
    *prev_gain_code = gain_code;
    *prev_state = (Word16)state;
 
-   /* circular convolution */
    state = state + mode;   /* level of dispersion */
 
    if(state == 0)
@@ -687,6 +442,4 @@ void D_ACELP_phase_dispersion(Word16 gain_code, Word16 gain_pit, Word16 code[],
          code[i] = (Word16)(code2[i] + code2[i + L_SUBFR]);
       }
    }
-
-   return;
 }
