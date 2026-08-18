@@ -299,10 +299,7 @@ static Word16 Vq_subvec( Float32 *lsf_r1, Float32 *lsf_r2, const Float32 *dico, 
       temp = lsf_r2[1] - dico[i * 4 + 3];
       dist += temp * temp * wf2[1];
 
-      if ( dist < dist_min ) {
-         dist_min = dist;
-         index = i;
-      }
+      CLIP_IF_LOWER_IDX(dist, dist_min, index, i);
    }
 
    lsf_r1[0] = dico[index * 4 + 0];
@@ -315,43 +312,22 @@ static Word16 Vq_subvec( Float32 *lsf_r1, Float32 *lsf_r2, const Float32 *dico, 
 
 static Word16 Vq_subvec_s( Float32 *lsf_r1, Float32 *lsf_r2, const Float32 *dico, Float32 *wf1, Float32 *wf2, Word16 dico_size )
 {
-   Word32 i, index = 0;
+   Word32 i, j, index = 0;
    Word16 sign = 0;
+   Float64 temp1, temp2, dist1, dist2;
 
    Float64 dist_min = DBL_MAX;
 
    for ( i = 0; i < dico_size; i++ ) {
-      Float64 temp1 = lsf_r1[0] - dico[i * 4 + 0];
-      Float64 temp2 = lsf_r1[0] + dico[i * 4 + 0];
-      Float64 dist1 = temp1 * temp1 * wf1[0];
-      Float64 dist2 = temp2 * temp2 * wf1[0];
-
-      temp1 = lsf_r1[1] - dico[i * 4 + 1];
-      temp2 = lsf_r1[1] + dico[i * 4 + 1];
-      dist1 += temp1 * temp1 * wf1[1];
-      dist2 += temp2 * temp2 * wf1[1];
-
-      temp1 = lsf_r2[0] - dico[i * 4 + 2];
-      temp2 = lsf_r2[0] + dico[i * 4 + 2];
-      dist1 += temp1 * temp1 * wf2[0];
-      dist2 += temp2 * temp2 * wf2[0];
-
-      temp1 = lsf_r2[1] - dico[i * 4 + 3];
-      temp2 = lsf_r2[1] + dico[i * 4 + 3];
-      dist1 += temp1 * temp1 * wf2[1];
-      dist2 += temp2 * temp2 * wf2[1];
-
-      if ( dist1 < dist_min ) {
-         dist_min = dist1;
-         index = i;
-         sign = 0;
+      for ( j = 0; j < 4; j++) {
+         temp1 = lsf_r1[j & 1] - dico[i * 4 + j];
+         temp2 = lsf_r1[j & 1] + dico[i * 4 + j];
+         dist1 += temp1 * temp1 * wf1[j & 1];
+         dist2 += temp2 * temp2 * wf1[j & 1];
       }
-
-      if ( dist2 < dist_min ) {
-         dist_min = dist2;
-         index = i;
-         sign = 1;
-      }
+      CLIP_IF_LOWER_IDX(dist1, dist_min, index, i);
+      CLIP_IF_LOWER_IDX(dist2, dist_min, index, i);
+      sign = dist2 < dist_min ? 1 : 0;
    }
 
    if ( sign == 0 ) {
@@ -359,8 +335,7 @@ static Word16 Vq_subvec_s( Float32 *lsf_r1, Float32 *lsf_r2, const Float32 *dico
       lsf_r1[1] = dico[index * 4 + 1];
       lsf_r2[0] = dico[index * 4 + 2];
       lsf_r2[1] = dico[index * 4 + 3];
-   }
-   else {
+   } else {
       lsf_r1[0] = -dico[index * 4 + 0];
       lsf_r1[1] = -dico[index * 4 + 1];
       lsf_r2[0] = -dico[index * 4 + 2];
@@ -394,7 +369,7 @@ static Word16 Vq_subvec3( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
 {
    Float64 dist, dist_min;
    Float32 temp;
-   Word32 i, index = 0;
+   Word32 i, j, index = 0;
    Word32 dico_index;
 
    dist_min = FLT_MAX;
@@ -402,43 +377,24 @@ static Word16 Vq_subvec3( Float32 *lsf_r1, const Float32 *dico, Float32 *wf1, Wo
    if ( use_half == 0 ) {
       for ( i = 0; i < dico_size; i++ ) {
          dico_index = 3 * i;
-         temp = lsf_r1[0] - dico[dico_index + 0];
-         temp *= wf1[0];
-         dist = temp * temp;
-         temp = lsf_r1[1] - dico[dico_index + 1];
-         temp *= wf1[1];
-         dist += temp * temp;
-         temp = lsf_r1[2] - dico[dico_index + 2];
-         temp *= wf1[2];
-         dist += temp * temp;
-
-         if ( dist < dist_min ) {
-            dist_min = dist;
-            index = i;
+         for ( j = 0; j < 3; j++ ) {
+            temp = lsf_r1[j] - dico[dico_index + j];
+            temp *= wf1[j];
+            dist = temp * temp;
          }
+         CLIP_IF_HIGHER_IDX(dist, dist_min, index, i);
       }
-
       dico_index = 3 * index;
-   }
-   else {
+   } else {
       for ( i = 0; i < dico_size; i++ ) {
          dico_index = 6 * i;
-         temp = lsf_r1[0] - dico[dico_index + 0];
-         temp *= wf1[0];
-         dist = temp * temp;
-         temp = lsf_r1[1] - dico[dico_index + 1];
-         temp *= wf1[1];
-         dist += temp * temp;
-         temp = lsf_r1[2] - dico[dico_index + 2];
-         temp *= wf1[2];
-         dist += temp * temp;
-
-         if ( dist < dist_min ) {
-            dist_min = dist;
-            index = i;
+         for ( j = 0; j < 3; j++ ) {
+            temp = lsf_r1[j] - dico[dico_index + j];
+            temp *= wf1[j];
+            dist = temp * temp;
          }
+         CLIP_IF_HIGHER_IDX(dist, dist_min, index, i);
       }
-
       dico_index = 6 * index;
    }
 
@@ -504,8 +460,7 @@ static void Q_plsf_3( enum ModeNB mode, Float32 *past_rq, Float32 *lsp1, Float32
          lsf_p[i] = mean_lsf_3[i] + past_rq[i] * pred_fac[i];
          lsf_r1[i] = lsf1[i] - lsf_p[i];
       }
-   }
-   else {
+   } else {
       *pred_init_i = 0;
       min_pred_init_err = FLT_MAX;
 
@@ -706,19 +661,13 @@ static Word16 check_lsp( Word16 *count, Float32 *lsp )
 
    for ( Word32 i = 3; i < 8; i++ ) {
       Float32 dist = lsp[i] - lsp[i + 1];
-
-      if ( dist < dist_min1 ) {
-         dist_min1 = dist;
-      }
+      SWAP_IF_LOWER(dist, dist_min1);
    }
    Float32 dist_min2 = FLT_MAX;
 
    for ( Word32 i = 1; i < 3; i++ ) {
       Float32 dist = lsp[i] - lsp[i + 1];
-
-      if ( dist < dist_min2 ) {
-         dist_min2 = dist;
-      }
+      SWAP_IF_LOWER(dist, dist_min2);
    }
 
    Float32 dist_th = lsp[1] > 0.98F ? 0.018F : lsp[1] > 0.93F ? 0.024F : 0.034F;
@@ -959,8 +908,7 @@ static Word32 Enc_lag3( Word32 T0, Word32 T0_frac, Word32 T0_prev, Word32 T0_min
       return T0 <= 85
          ? T0 * 3 - 58 + T0_frac
          : T0 + 112;
-   }
-   else {
+   } else {
       if ( flag4 == 0 ) {
          return 3 * ( T0 - T0_min ) + 2 + T0_frac;
       } else {
@@ -975,8 +923,7 @@ static Word32 Enc_lag3( Word32 T0, Word32 T0_frac, Word32 T0_prev, Word32 T0_min
 
          if ( tmp_ind >= uplag ) {
             return ( T0 - tmp_lag ) + 5;
-         }
-         else {
+         } else {
             i = tmp_lag + 1;
             i = i + i + i;
             return i > uplag ? ( uplag - tmp_ind ) + 3 : ( T0 - tmp_lag ) + 11;
@@ -1226,8 +1173,7 @@ static Word16 q_gain_pitch( enum ModeNB mode, Float32 gp_limit, Float32 *gain, F
       else {
          ii = index - 1;
 
-         if ( index == ( NB_QUA_PITCH - 1 ) || ( qua_gain_pitch[index + 1] >
-               gp_limit ) ) {
+         if ( index == ( NB_QUA_PITCH - 1 ) || ( qua_gain_pitch[index + 1] > gp_limit ) ) {
             ii = index - 2;
          }
       }
@@ -1289,10 +1235,7 @@ static void cl_ltp( Word32 *T0_prev_subframe, Float32 *gp, enum ModeNB mode,
    }
 
    if ( ( mode == MR475 ) || ( mode == MR515 ) ) {
-      if ( *gain_pit > 0.85 ) {
-         *gain_pit = 0.85F;
-      }
-
+      CLIP_IF_HIGHER(*gain_pit, 0.85F);
       if ( gpc_flag != 0 )
          *gp_limit = GP_CLIP;
    }
@@ -3189,8 +3132,7 @@ static Word16 Qua_gain( enum ModeNB mode, Word32 gcode0_exp, Word32 gcode0_fra, 
       table_len = VQ_SIZE_HIGHRATES;
       table_gain = table_highrates;
       *qua_ener_index = NB_QUA_CODE;
-   }
-   else {
+   } else {
       table_len = VQ_SIZE_LOWRATES;
       table_gain = table_lowrates;
       *qua_ener_index = NB_QUA_CODE + VQ_SIZE_HIGHRATES;
@@ -3228,8 +3170,7 @@ static Word16 Qua_gain( enum ModeNB mode, Word32 gcode0_exp, Word32 gcode0_fra, 
    gcode_0 = Pow2( 14, gcode0_fra );
    if ( gcode0_exp < 11 ) {
       *gain_cod = (Float32)((g_code_tmp * gcode_0) >> ( 25 - gcode0_exp ));
-   }
-   else {
+   }  else {
       i = ( ( g_code_tmp * gcode_0) << ( gcode0_exp - 9 ) );
       *gain_cod = ( i >> ( gcode0_exp - 9 ) ) != ( g_code_tmp * gcode_0) ? 0x7FFF : (Float32)(i >> 16);
    }
@@ -3286,9 +3227,7 @@ static void gainQuant( enum ModeNB mode, Word32 even_subframe, Word32 *
          if (gcode0 > 2047.9375F) gcode0 = 2047.9375F;
 
          *gain_cod = (Float32)(Dotproduct40( xn2, y2 ) / ( Dotproduct40( y2, y2 )+ 0.01F ));
-
-         if ( *gain_cod < 0 )
-            *gain_cod = 0.0F;
+         CLIP_IF_LOWER(*gain_cod, 0);
          *( *anap )++ = q_gain_code( gcode0, gain_cod,&qua_ener_index);
       } else {
          calc_filt_energies( mode, xn, xn2, y1, y2, gCoeff, coeff, &cod_gain );
@@ -3298,8 +3237,7 @@ static void gainQuant( enum ModeNB mode, Word32 even_subframe, Word32 *
                   code, coeff, en, exp, frac , cod_gain, gp_limit, gain_pit,
                   gain_cod, &qua_ener_index, anap );
          } else {
-            *( *anap )++ = Qua_gain( mode, exp, frac, coeff, gp_limit, gain_pit,
-                  gain_cod, &qua_ener_index);
+            *( *anap )++ = Qua_gain( mode, exp, frac, coeff, gp_limit, gain_pit, gain_cod, &qua_ener_index);
          }
       }
 
@@ -3390,8 +3328,7 @@ static void dtx_buffer( Word16 *hist_ptr, Float32 *lsp_hist, Float32 lsp_new[], 
    frame_en += Dotproduct40( &speech[120], &speech[120] );
 
    if ( frame_en > 1 ) {
-      log_en_hist[ * hist_ptr] = ( Float32 )( log10( frame_en * 0.00625F )*
-            1.660964F );
+      log_en_hist[ * hist_ptr] = ( Float32 )( log10( frame_en * 0.00625F )* 1.660964F );
    } else {
       log_en_hist[ * hist_ptr] = -3.660965F;
    }
@@ -3424,21 +3361,15 @@ static Word32 dtx_enc( Word16 *log_en_index, Float32 log_en_hist[], Float32
 
       log_en = log_en + 2.5F;
       *log_en_index = ( Word16 )( ( log_en * 4 ) + 0.5F );   /* 6 bits */
-      if ( *log_en_index > 63 ) {
-         *log_en_index = 63;
-      }
-
-      if ( *log_en_index < 0 ) {
-         *log_en_index = 0;
-      }
+      CLIP_IF_HIGHER(*log_en_index, 63);
+      CLIP_IF_LOWER(*log_en_index, 0);
 
       if (*log_en_index > 46){
          past_qua_en[0] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + 46;
          past_qua_en[1] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + 46;
          past_qua_en[2] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + 46;
          past_qua_en[3] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + 46;
-      }
-      else {
+      } else {
          past_qua_en[0] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + *log_en_index;
          past_qua_en[1] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + *log_en_index;
          past_qua_en[2] = NB_QUA_CODE+VQ_SIZE_HIGHRATES+VQ_SIZE_LOWRATES+(MR475_VQ_SIZE*2) + *log_en_index;
@@ -3519,8 +3450,7 @@ static void cod_amr( cod_amrState *st, enum ModeNB mode, Float32 new_speech[], W
    }
 
    lpc( st->lpcSt->LevinsonSt->old_A, st->p_window, st->p_window_12k2, A_t, mode);
-   lsp( mode, *used_mode, st->lspSt->lsp_old, st->lspSt->lsp_old_q, st->lspSt->
-         qSt->past_rq, A_t, Aq_t, lsp_new, &ana );
+   lsp( mode, *used_mode, st->lspSt->lsp_old, st->lspSt->lsp_old_q, st->lspSt->qSt->past_rq, A_t, Aq_t, lsp_new, &ana );
 
    dtx_buffer( &st->dtxEncSt->hist_ptr, st->dtxEncSt->lsp_hist, lsp_new, st->
          new_speech, st->dtxEncSt->log_en_hist );
@@ -3541,8 +3471,7 @@ static void cod_amr( cod_amrState *st, enum ModeNB mode, Float32 new_speech[], W
 
       st->clLtpSt->pitchSt->T0_prev_subframe = 0;
       st->sharp = 0;
-   }
-   else {
+   } else {
       lsp_flag = check_lsp( &st->tonStabSt->count, st->lspSt->lsp_old );
    }
 
@@ -3610,9 +3539,7 @@ static void cod_amr( cod_amrState *st, enum ModeNB mode, Float32 new_speech[], W
          subframePreProc( *used_mode, gamma1, gamma1_12k2, gamma2, A, Aq, &st->
                speech[i_subfr], st->mem_err, st->mem_w0, st->zero, st->ai_zero,
                &st->exc[i_subfr], st->h1, xn, res, st->error );
-      }
-
-      else {
+      } else {
          subframePreProc( *used_mode, gamma1, gamma1_12k2, gamma2, A, Aq, &st->
                speech[i_subfr], st->mem_err, mem_w0_save, st->zero, st->ai_zero,
                &st->exc[i_subfr], st->h1, xn, res, st->error );
@@ -3637,8 +3564,7 @@ static void cod_amr( cod_amrState *st, enum ModeNB mode, Float32 new_speech[], W
          st->old_lags[0] = T0;
       }
 
-      cbsearch( *used_mode, subfrNr, xn2, st->h1, T0, st->sharp, gain_pit, code,
-            y2, res2, &ana );
+      cbsearch( *used_mode, subfrNr, xn2, st->h1, T0, st->sharp, gain_pit, code, y2, res2, &ana );
 
       gainQuant( *used_mode, evenSubfr, st->gainQuantSt->gc_predSt->past_qua_en,
             st->gainQuantSt->gc_predUncSt->past_qua_en, st->gainQuantSt->
@@ -3659,8 +3585,7 @@ static void cod_amr( cod_amrState *st, enum ModeNB mode, Float32 new_speech[], W
          subframePostProc( st->speech, i_subfr, gain_pit, gain_code, Aq, synth,
                xn, code, y1, y2, st->mem_syn, st->mem_err, st->mem_w0, st->exc,
                &st->sharp );
-      }
-      else {
+      } else {
          if ( evenSubfr != 0 ) {
             i_subfr_sf0 = i_subfr;
             memcpy( xn_sf0, xn, L_SUBFR <<2 );
@@ -3902,68 +3827,21 @@ static Word32 cod_amr_init( cod_amrState **state, Word32 dtx )
 {
    cod_amrState * s;
 
-   if ( ( s = ( cod_amrState * ) malloc( sizeof( cod_amrState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->clLtpSt = ( clLtpState * ) malloc( sizeof( clLtpState ) ) ) == NULL
-         ) {
-      return-1;
-   }
-
-   if ( ( s->clLtpSt->pitchSt = ( Pitch_frState * ) malloc( sizeof(
-         Pitch_frState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->lspSt = ( lspState * ) malloc( sizeof( lspState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->lspSt->qSt = ( Q_plsfState * ) malloc( sizeof( Q_plsfState ) ) ) ==
-         NULL ) {
-      return-1;
-   }
-
-   if ( ( s->gainQuantSt = ( gainQuantState * ) malloc( sizeof( gainQuantState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->gainQuantSt->gc_predSt = ( gc_predState * ) malloc( sizeof( gc_predState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->gainQuantSt->gc_predUncSt = ( gc_predState * ) malloc( sizeof( gc_predState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->gainQuantSt->adaptSt = ( gain_adaptState * ) malloc( sizeof( gain_adaptState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->pitchOLWghtSt = ( pitchOLWghtState * ) malloc( sizeof( pitchOLWghtState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->tonStabSt = ( tonStabState * ) malloc( sizeof( tonStabState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->lpcSt = ( lpcState * ) malloc( sizeof( lpcState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->lpcSt->LevinsonSt = ( LevinsonState * ) malloc( sizeof( LevinsonState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->vadSt = ( vadState * ) malloc( sizeof( vadState ) ) ) == NULL ) {
-      return-1;
-   }
-
-   if ( ( s->dtxEncSt = ( dtx_encState * ) malloc( sizeof( dtx_encState ) ) ) == NULL ) {
-      return-1;
-   }
+   TRY_ALLOC(s, cod_amrState);
+   TRY_ALLOC(s->clLtpSt, clLtpState);
+   TRY_ALLOC(s->clLtpSt->pitchSt, Pitch_frState);
+   TRY_ALLOC(s->lspSt, lspState);
+   TRY_ALLOC(s->lspSt->qSt, Q_plsfState);
+   TRY_ALLOC(s->gainQuantSt, gainQuantState);
+   TRY_ALLOC(s->gainQuantSt->gc_predSt, gc_predState);
+   TRY_ALLOC(s->gainQuantSt->gc_predUncSt, gc_predState);
+   TRY_ALLOC(s->gainQuantSt->adaptSt, gain_adaptState);
+   TRY_ALLOC(s->pitchOLWghtSt, pitchOLWghtState);
+   TRY_ALLOC(s->tonStabSt, tonStabState);
+   TRY_ALLOC(s->lpcSt, lpcState);
+   TRY_ALLOC(s->lpcSt->LevinsonSt, LevinsonState);
+   TRY_ALLOC(s->vadSt, vadState);
+   TRY_ALLOC(s->dtxEncSt, dtx_encState);
 
    cod_amr_reset( s, dtx );
    *state = s;
