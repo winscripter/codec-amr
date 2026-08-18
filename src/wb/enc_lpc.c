@@ -64,24 +64,8 @@ extern const Float32 E_ROM_lag_window[];
 extern const Float32 E_ROM_grid[];
 extern const Float32 E_ROM_f_interpol_frac[];
 
-/*
- * E_LPC_isf_reorder
- *
- * Parameters:
- *    isf          I/O: vector of isfs
- *    min_dist       I: quantized ISFs (in frequency domain)
- *    n              I: LPC order
- *
- * Function:
- *    To make sure that the  isfs are properly order and to keep a certain
- *    minimum distance between consecutive isfs.
- *
- * Returns:
- *    void
- */
 static void E_LPC_isf_reorder(Word16 *isf, Word16 min_dist, Word16 n)
 {
-
    Word32 i, isf_min;
 
    isf_min = min_dist;
@@ -95,33 +79,8 @@ static void E_LPC_isf_reorder(Word16 *isf, Word16 min_dist, Word16 n)
 
       isf_min = isf[i] + min_dist;
    }
-
-   return;
 }
 
-/*
- * E_LPC_isp_pol_get
- *
- * Parameters:
- *    isp            I: Immitance spectral pairs (cosine domaine)
- *    f              O: the coefficients of F1 or F2
- *    n              I: no of coefficients (m/2)
- *    k16            I: 16k flag
- *
- * Function:
- *    Find the polynomial F1(z) or F2(z) from the ISPs.
- *    This is performed by expanding the product polynomials:
- *
- *    F1(z) =   product   ( 1 - 2 isp_i z^-1 + z^-2 )
- *            i=0,2,4,6,8
- *    F2(z) =   product   ( 1 - 2 isp_i z^-1 + z^-2 )
- *             i=1,3,5,7
- *
- *    where isp_i are the ISPs in the cosine domain.
- *
- * Returns:
- *    void
- */
 static void E_LPC_isp_pol_get(Word16 *isp, Word32 *f, Word32 n, Word16 k16)
 {
    Word32 i, j, t0, s1, s2;
@@ -136,7 +95,6 @@ static void E_LPC_isp_pol_get(Word16 *isp, Word32 *f, Word32 n, Word16 k16)
       s2 >>= 2;
    }
 
-   /* All computation in Q23 */
    f[0] = s1;              /* f[0] = 1.0; in Q23         */
    f[1] = isp[0] * (-s2);  /* f[1] = -2.0*isp[0] in Q23  */
    f += 2;                 /* Advance f pointer          */
@@ -159,8 +117,6 @@ static void E_LPC_isp_pol_get(Word16 *isp, Word32 *f, Word32 n, Word16 k16)
       f += i;     /* Advance f pointer   */
       isp += 2;   /* Advance isp pointer */
    }
-
-   return;
 }
 
 static void E_LPC_f_isp_pol_get(Float32 isp[], Float32 f[], Word32 n)
@@ -185,24 +141,8 @@ static void E_LPC_f_isp_pol_get(Float32 isp[], Float32 f[], Word32 n)
 
       f[1] += b;
    }
-
-   return;
 }
 
-/*
- * E_LPC_isp_a_conversion
- *
- * Parameters:
- *    isp            I: (Q15) Immittance spectral pairs
- *    a              O: (Q12) Predictor coefficients (order = M)
- *    m              I: order of LP filter
- *
- * Function:
- *    Convert ISPs to predictor coefficients a[]
- *
- * Returns:
- *    void
- */
 void E_LPC_isp_a_conversion(Word16 isp[], Word16 a[], Word16 m)
 {
    Word32 f1[NC16k + 1], f2[NC16k];
@@ -239,58 +179,39 @@ void E_LPC_isp_a_conversion(Word16 isp[], Word16 a[], Word16 m)
       E_LPC_isp_pol_get(&isp[1], f2, nc - 1, 0);
    }
 
-   /* Multiply F2(z) by (1 - z^-2)  */
    for (i = (nc - 1); i > 1; i--)
    {
       f2[i] = f2[i] - f2[i - 2];     /* f2[i] -= f2[i-2]; */
    }
 
-   /*  Scale F1(z) by (1+isp[m-1])  and  F2(z) by (1-isp[m-1]) */
    for (i = 0; i < nc; i++)
    {
-      /* f1[i] *= (1.0 + isp[M-1]); */
-
       E_UTIL_l_extract(f1[i], &hi, &lo);
       t0 = E_UTIL_mpy_32_16(hi, lo, isp[m - 1]);
       f1[i] = f1[i] + t0;
-
-      /* f2[i] *= (1.0 - isp[M-1]); */
 
       E_UTIL_l_extract(f2[i], &hi, &lo);
       t0 = E_UTIL_mpy_32_16(hi, lo, isp[m - 1]);
       f2[i] = f2[i] - t0;
    }
 
-   /*
-    * A(z) = (F1(z)+F2(z))/2
-    * F1(z) is symmetric and F2(z) is antisymmetric
-    */
-
-   /* a[0] = 1.0; */
    a[0] = 4096;
 
    for (i = 1, j = (m - 1); i < nc; i++, j--)
    {
-      /* a[i] = 0.5*(f1[i] + f2[i]); */
       t0 = f1[i] + f2[i];                    /* f1[i] + f2[i]             */
       a[i] = (Word16)((t0 + 0x800) >> 12);   /* from Q23 to Q12 and * 0.5 */
 
-      /* a[j] = 0.5*(f1[i] - f2[i]); */
       t0 = (f1[i] - f2[i]);                  /* f1[i] - f2[i]             */
       a[j] = (Word16)((t0 + 0x800) >> 12);   /* from Q23 to Q12 and * 0.5 */
-
    }
 
-   /* a[NC] = 0.5*f1[NC]*(1.0 + isp[M-1]); */
    E_UTIL_l_extract(f1[nc], &hi, &lo);
    t0 = E_UTIL_mpy_32_16(hi, lo, isp[m - 1]);
    t0 = (f1[nc] + t0);
    a[nc] = (Word16)((t0 + 0x800) >> 12);    /* from Q23 to Q12 and * 0.5 */
 
-   /* a[m] = isp[m-1]; */
    a[m] = (Word16)((isp[m - 1] + 0x4) >> 3); /* from Q15 to Q12          */
-
-   return;
 }
 
 void E_LPC_f_isp_a_conversion(Float32 *isp, Float32 *a, Word32 m)
@@ -300,35 +221,19 @@ void E_LPC_f_isp_a_conversion(Float32 *isp, Float32 *a, Word32 m)
 
    nc = m / 2;
 
-   /*
-    *  Find the polynomials F1(z) and F2(z)
-    */
-
    E_LPC_f_isp_pol_get(&isp[0], f1, nc);
    E_LPC_f_isp_pol_get(&isp[1], f2, nc-1);
 
-   /*
-    *  Multiply F2(z) by (1 - z^-2)
-    */
    for (i = (nc - 1); i > 1; i--)
    {
       f2[i] -= f2[i - 2];
    }
-
-   /*
-    *  Scale F1(z) by (1+isp[m-1])  and  F2(z) by (1-isp[m-1])
-    */
 
    for (i = 0; i < nc; i++)
    {
       f1[i] *= (Float32)(1.0 + isp[m - 1]);
       f2[i] *= (Float32)(1.0 - isp[m - 1]);
    }
-
-   /*
-    *  A(z) = (F1(z)+F2(z))/2
-    *  F1(z) is symmetric and F2(z) is antisymmetric
-    */
 
    a[0] = 1.0;
 
@@ -340,25 +245,8 @@ void E_LPC_f_isp_a_conversion(Float32 *isp, Float32 *a, Word32 m)
 
    a[nc] = (Float32)(0.5 * f1[nc] * (1.0 + isp[m - 1]));
    a[m] = isp[m - 1];
-
-   return;
 }
 
-/*
- * E_LPC_int_isp_find
- *
- * Parameters:
- *    isp_old           I: isps from past frame
- *    isp_new           I: isps from present frame
- *    frac              I: (Q15) fraction for 3 first subfr
- *    Az                O: LP coefficients in 4 subframes
- *
- * Function:
- *    Find the Word32erpolated ISP parameters for all subframes.
- *
- * Returns:
- *    void
- */
 void E_LPC_int_isp_find(Word16 isp_old[], Word16 isp_new[],
                         const Word16 frac[], Word16 Az[])
 {
@@ -381,10 +269,7 @@ void E_LPC_int_isp_find(Word16 isp_old[], Word16 isp_new[],
       Az += MP1;
    }
 
-   /* 4th subframe: isp_new (frac=1.0) */
    E_LPC_isp_a_conversion(isp_new, Az, M);
-
-   return;
 }
 
 void E_LPC_f_int_isp_find(Float32 isp_old[], Float32 isp_new[], Float32 a[],
@@ -409,25 +294,8 @@ void E_LPC_f_int_isp_find(Float32 isp_old[], Float32 isp_new[], Float32 a[],
     E_LPC_f_isp_a_conversion(isp, p_a, m);
     p_a += (m + 1);
   }
-
-  return;
 }
 
-/*
- * E_LPC_a_weight
- *
- * Parameters:
- *    a              I: LP filter coefficients
- *    ap             O: weighted LP filter coefficients
- *    gamma          I: weighting factor
- *    m              I: order of LP filter
- *
- * Function:
- *    Weighting of LP filter coefficients, ap[i] = a[i] * (gamma^i).
- *
- * Returns:
- *    void
- */
 void E_LPC_a_weight(Float32 *a, Float32 *ap, Float32 gamma, Word32 m)
 {
    Float32 f;
@@ -441,26 +309,9 @@ void E_LPC_a_weight(Float32 *a, Float32 *ap, Float32 gamma, Word32 m)
       ap[i] = f*a[i];
       f *= gamma;
    }
-
-   return;
 }
 
-/*
- * E_LPC_isf_2s3s_decode
- *
- * Parameters:
- *    indice            I: quantisation indices
- *    isf_q             O: quantised ISFs in the cosine domain
- *    past_isfq       I/O: past ISF quantizer
- *
- * Function:
- *    Decoding of ISF parameters.
- *
- * Returns:
- *    void
- */
-static void E_LPC_isf_2s3s_decode(Word32 *indice, Word16 *isf_q,
-                                  Word16 *past_isfq)
+static void E_LPC_isf_2s3s_decode(Word32 *indice, Word16 *isf_q, Word16 *past_isfq)
 {
    Word32 i;
    Word16 tmp;
@@ -472,26 +323,22 @@ static void E_LPC_isf_2s3s_decode(Word32 *indice, Word16 *isf_q,
 
    for(i = 0; i < 7; i++)
    {
-      isf_q[i + 9] =
-         (Word16)((E_ROM_dico2_isf[indice[1] * 7 + i] * 2.56F) + 0.5F);
+      isf_q[i + 9] = (Word16)((E_ROM_dico2_isf[indice[1] * 7 + i] * 2.56F) + 0.5F);
    }
 
    for(i = 0; i < 5; i++)
    {
-      isf_q[i] = (Word16)(isf_q[i] +
-         (Word16)((E_ROM_dico21_isf_36b[indice[2] * 5 + i] * 2.56F) + 0.5F));
+      isf_q[i] = (Word16)(isf_q[i] + (Word16)((E_ROM_dico21_isf_36b[indice[2] * 5 + i] * 2.56F) + 0.5F));
    }
 
    for(i = 0; i < 4; i++)
    {
-      isf_q[i + 5] = (Word16)(isf_q[i + 5] +
-         (Word32)((E_ROM_dico22_isf_36b[indice[3] * 4 + i] * 2.56F) + 0.5F));
+      isf_q[i + 5] = (Word16)(isf_q[i + 5] + (Word32)((E_ROM_dico22_isf_36b[indice[3] * 4 + i] * 2.56F) + 0.5F));
    }
 
    for(i = 0; i < 7; i++)
    {
-      isf_q[i + 9] = (Word16)(isf_q[i + 9] +
-         (Word32)((E_ROM_dico23_isf_36b[indice[4] * 7 + i] * 2.56F) + 0.5F));
+      isf_q[i + 9] = (Word16)(isf_q[i + 9] + (Word32)((E_ROM_dico23_isf_36b[indice[4] * 7 + i] * 2.56F) + 0.5F));
    }
 
    for(i = 0; i < ORDER; i++)
@@ -503,29 +350,8 @@ static void E_LPC_isf_2s3s_decode(Word32 *indice, Word16 *isf_q,
    }
 
    E_LPC_isf_reorder(isf_q, ISF_GAP, ORDER);
-
-   return;
 }
 
-
-/*
- * E_LPC_isf_2s5s_decode
- *
- * Parameters:
- *    indice            I: quantization indices
- *    isf_q             O: quantized ISFs in the cosine domain
- *    past_isfq       I/O: past ISF quantizer
- *    isfold            I: past quantized ISF
- *    isf_buf           I: isf buffer
- *    bfi               I: Bad frame indicator
- *    enc_dec           I:
- *
- * Function:
- *    Decoding of ISF parameters.
- *
- * Returns:
- *    void
- */
 void E_LPC_isf_2s5s_decode(Word32 *indice, Word16 *isf_q, Word16 *past_isfq)
 {
    Word32 i;
@@ -581,26 +407,8 @@ void E_LPC_isf_2s5s_decode(Word32 *indice, Word16 *isf_q, Word16 *past_isfq)
    }
 
    E_LPC_isf_reorder(isf_q, ISF_GAP, ORDER);
-
-   return;
 }
 
-/*
- * E_LPC_isf_isp_conversion
- *
- * Parameters:
- *    isp            O: (Q15) isp[m] (range: -1<=val<1)
- *    isf            I: (Q15) isf[m] normalized (range: 0.0 <= val <= 0.5)
- *    m              I: LPC order
- *
- * Function:
- *    Transformation isf to isp
- *
- *    ISP are immitance spectral pair in cosine domain (-1 to 1).
- *    ISF are immitance spectral pair in frequency domain (0 to 6400).
- * Returns:
- *    void
- */
 void E_LPC_isf_isp_conversion(Word16 isf[], Word16 isp[], Word16 m)
 {
    Word32 i, ind, offset, tmp;
@@ -617,32 +425,11 @@ void E_LPC_isf_isp_conversion(Word16 isf[], Word16 isp[], Word16 m)
       ind = isp[i] >> 7;         /* ind    = b7-b15 of isf[i] */
       offset = isp[i] & 0x007f;  /* offset = b0-b6  of isf[i] */
 
-      /* isp[i] = table[ind]+ ((table[ind+1]-table[ind])*offset) / 128 */
       tmp = ((E_ROM_cos[ind + 1] - E_ROM_cos[ind]) * offset) << 1;
       isp[i] = (Word16)(E_ROM_cos[ind] + (tmp >> 8));
    }
-
-   return;
 }
 
-/*
- * E_LPC_chebyshev
- *
- * Parameters:
- *    x           I: value of evaluation; x=cos(freq)
- *    f           I: coefficients of sum or diff polynomial
- *    n           I: order of polynomial
- *
- * Function:
- *    Evaluates the Chebyshev polynomial series
- *
- *    The polynomial order is n = m/2   (m is the prediction order)
- *    The polynomial is given by
- *    C(x) = f(0)T_n(x) + f(1)T_n-1(x) + ... +f(n-1)T_1(x) + f(n)/2
- *
- * Returns:
- *    the value of the polynomial C(x)
- */
 static Float32 E_LPC_chebyshev(Float32 x, Float32 *f, Word32 n)
 {
    Float32 b1, b2, b0, x2;
@@ -661,22 +448,7 @@ static Float32 E_LPC_chebyshev(Float32 x, Float32 *f, Word32 n)
 
    return (x * b1 - b2 + 0.5F * f[n]); /* return (x*b1 - b2 + 0.5*f[5]);   */
 }
-/*
- * E_LPC_isf_sub_vq
- *
- * Parameters:
- *    x            I/O: unquantised / quantised ISF
- *    dico           I: codebook
- *    dim            I: dimension of vector
- *    dico_size      I: codebook size
- *    distance       O: minimum distance
- *
- * Function:
- *    Quantization of a subvector of size 2 in Split-VQ of ISFs
- *
- * Returns:
- *    quantisation index
- */
+
 Word16 E_LPC_isf_sub_vq(Float32 *x, const Float32 *E_ROM_dico, Word32 dim,
                         Word32 E_ROM_dico_size, Float32 *distance)
 {
@@ -706,26 +478,11 @@ Word16 E_LPC_isf_sub_vq(Float32 *x, const Float32 *E_ROM_dico, Word32 dim,
    }
 
    *distance = dist_min;
-
-   /* Reading the selected vector */
    memcpy(x, &E_ROM_dico[index * dim], dim * sizeof(Float32));
 
    return (Word16)index;
 }
 
-/*
- * E_LPC_lag_wind
- *
- * Parameters:
- *    r         I/O: autocorrelations vector
- *    m           I: window lenght
- *
- * Function:
- *    Lag windowing of the autocorrelations.
- *
- * Returns:
- *    void
- */
 void E_LPC_lag_wind(Float32 r[], Word32 m)
 {
    Word32 i;
@@ -734,27 +491,8 @@ void E_LPC_lag_wind(Float32 r[], Word32 m)
    {
       r[i] *= E_ROM_lag_window[i];
    }
-
-   return;
 }
 
-/*
- * E_LPC_lev_dur
- *
- * Parameters:
- *    r_h         I: vector of autocorrelations (msb)
- *    r_l         I: vector of autocorrelations (lsb)
- *    A           O: LP coefficients (a[0] = 1.0) (m = 16)
-*     rc          O: reflection coefficients
- *    mem       I/O: static memory
- *
- * Function:
- *    Wiener-Levinson-Durbin algorithm to compute
- *    the LPC parameters from the autocorrelations of speech.
- *
- * Returns:
- *    void
- */
 void E_LPC_lev_dur(Float32 *a, Float32 *r, Word32 m)
 {
    Float32 buf[M];
@@ -796,48 +534,8 @@ void E_LPC_lev_dur(Float32 *a, Float32 *r, Word32 m)
          err = 0.01F;
       }
    }
-
-   return;
 }
 
-/*
- * E_LPC_a_isp_conversion
- *
- * Parameters:
- *    a           I: LP filter coefficients
- *    isp         O: Immittance spectral pairs
- *    old_isp     I: ISP vector from past frame
- *
- * Function:
- *    Compute the ISPs from the LPC coefficients a[] using Chebyshev
- *    polynomials. The found ISPs are in the cosine domain with values
- *    in the range from 1 down to -1.
- *    The table E_ROM_grid[] contains the polongs (in the cosine domain) at
- *    which the polynomials are evaluated.
- *
- *    The ISPs are the roots of the two polynomials F1(z) and F2(z)
- *    defined as
- *               F1(z) = A(z) + z^-m A(z^-1)
- *    and        F2(z) = A(z) - z^-m A(z^-1)
- *
- *    for a even order m=2n, F1(z) has 5 conjugate roots on the unit circle
- *    and F2(z) has 4 conjugate roots on the unit circle in addition to two
- *    roots at 0 and pi.
- *
- *    For a 10th order LP analysis, F1(z) and F2(z) can be written as
- *
- *    F1(z) = (1 + a[10])   PRODUCT  (1 - 2 cos(w_i) z^-1 + z^-2 )
- *                       i=0,2,4,6,8
- *
- *    F2(z) = (1 - a[10]) (1 - z^-2) PRODUCT  (1 - 2 cos(w_i) z^-1 + z^-2 )
- *                                  i=1,3,5,7
- *
- *    The ISPs are the M-1 frequencies w_i, i=0...M-2 plus the last
- *    predictor coefficient a[M].
- *
- * Returns:
- *    void
- */
 void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
                             Word32 m)
 {
@@ -848,12 +546,6 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
 
    nc = m >> 1;
 
-   /*
-    * find the sum and diff polynomials F1(z) and F2(z)
-    *      F1(z) = [A(z) + z^m A(z^-1)]
-    *      F2(z) = [A(z) - z^m A(z^-1)]/(1-z^-2)
-    */
-
    for (i=0; i < nc; i++)
    {
       f1[i] = a[i] + a[m - i];
@@ -862,23 +554,10 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
 
    f1[nc] = 2.0F * a[nc];
 
-   /* divide by (1 - z^-2) */
    for (i = 2; i < nc; i++)
    {
       f2[i] += f2[i - 2];
    }
-
-   /*
-    * Find the ISPs (roots of F1(z) and F2(z) ) using the
-    * Chebyshev polynomial evaluation.
-    * The roots of F1(z) and F2(z) are alternatively searched.
-    * We start by finding the first root of F1(z) then we switch
-    * to F2(z) then back to F1(z) and so on until all roots are found.
-    *
-    *  - Evaluate Chebyshev pol. at E_ROM_grid polongs and check for sign change.
-    *  - If sign change track the root by subdividing the Word32erval
-    *    4 times and ckecking sign change.
-    */
 
    nf=0;      /* number of found frequencies */
    ip=0;      /* flag to first polynomial   */
@@ -903,8 +582,6 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
       {
          j--;
 
-         /* divide the Word32erval of sign change by NO_ITER */
-
          for (i = 0; i < NO_ITER; i++)
          {
             xmid = 0.5F * (xlow + xhigh);
@@ -922,8 +599,6 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
             }
          }
 
-         /* linear interpolation for evaluating the root */
-
          xint = xlow - ylow * (xhigh - xlow) / (yhigh - ylow);
 
          isp[nf] = xint;    /* new root */
@@ -940,11 +615,6 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
 
    isp[m - 1] = a[m];
 
-   /*
-    * Check if m-1 roots found
-    * if not use the ISPs from previous frame
-    */
-
    if (nf < m - 1)
    {
       for(i = 0; i < m; i++)
@@ -952,58 +622,20 @@ void E_LPC_a_isp_conversion(Float32 *a, Float32 *isp, Float32 *old_isp,
          isp[i] = old_isp[i];
       }
    }
-
-   return;
 }
 
-/*
- * E_LPC_isp_isf_conversion
- *
- * Parameters:
- *    isp            I: isp[m] (range: -1 <= val < 1) (Q15)
- *    isf            O: isf[m] normalized (range: 0 <= val <= 6400)
- *    m              I: LPC order
- *
- * Function:
- *    Transformation isp to isf
- *
- *    ISP are immitance spectral pair in cosine domain (-1 to 1).
- *    ISF are immitance spectral pair in frequency domain (0 to 6400).
- * Returns:
- *    energy of prediction error
- */
 void E_LPC_isp_isf_conversion(Float32 isp[], Float32 isf[], Word32 m)
 {
    Word32 i;
 
-   /* convert ISPs to frequency domain 0..6400 */
    for(i = 0; i < (m - 1); i++)
    {
       isf[i] = (Float32)(acos(isp[i]) * SCALE1);
    }
 
    isf[m - 1] = (Float32)(acos(isp[m - 1]) * SCALE1 * 0.5F);
-
-   return;
 }
 
-/*
- * E_LPC_stage1_isf_vq
- *
- * Parameters:
- *    x              I: ISF residual vector
- *    dico           I: quantisation codebook
- *    dim            I: dimension of vector
- *    dico_size      I: size of quantization codebook
- *    index          O: indices of survivors
- *    surv           I: number of survivor
- *
- * Function:
- *    1st stage VQ with split-by-2.
- *
- * Returns:
- *    void
- */
 static void E_LPC_stage1_isf_vq(Float32 *x, const Float32 *E_ROM_dico,
                                 Word32 dim, Word32 E_ROM_dico_size,
                                 Word32 *index, Word32 surv)
@@ -1055,27 +687,8 @@ static void E_LPC_stage1_isf_vq(Float32 *x, const Float32 *E_ROM_dico,
       }
    }
 
-   return;
 }
 
-/*
- * E_LPC_isf_2s3s_quantise
- *
- * Parameters:
- *    isf1              I: ISF in the frequency domain (0..6400)
- *    isf_q             O: quantized ISF
- *    past_isfq       I/O: past ISF quantizer
- *    indice            O: quantisation indices (5 words)
- *    nb_surv           I: number of survivor (1, 2, 3 or 4)
- *
- * Function:
- *    Quantization of isf parameters with prediction. (36 bits)
- *
- *    The isf vector is quantized using two-stage VQ with split-by-2 in
- *    1st stage and split-by-3 in the second stage.
- * Returns:
- *    void
- */
 void E_LPC_isf_2s3s_quantise(Float32 *isf1, Word16 *isf_q, Word16 *past_isfq,
                              Word32 *indice, Word32 nb_surv)
 {
@@ -1144,31 +757,9 @@ void E_LPC_isf_2s3s_quantise(Float32 *isf1, Word16 *isf_q, Word16 *past_isfq,
       }
    }
 
-   /* decoding the ISF */
-
    E_LPC_isf_2s3s_decode(indice, isf_q, past_isfq);
-
-   return;
 }
 
-/*
- * E_LPC_isf_2s5s_quantise
- *
- * Parameters:
- *    isf1              I: ISF in the frequency domain (0..6400)
- *    isf_q             O: quantized ISF
- *    past_isfq       I/O: past ISF quantizer
- *    indice            O: quantisation indices (5 words)
- *    nb_surv           I: number of survivor (1, 2, 3 or 4)
- *
- * Function:
- *    Quantization of isf parameters with prediction. (46 bits)
- *
- *    The isf vector is quantized using two-stage VQ with split-by-2 in
- *    1st stage and split-by-5 in the second stage.
- * Returns:
- *    void
- */
 void E_LPC_isf_2s5s_quantise(Float32 *isf1, Word16 *isf_q, Word16 *past_isfq,
                              Word32 *indice, Word32 nb_surv)
 {
@@ -1247,9 +838,5 @@ void E_LPC_isf_2s5s_quantise(Float32 *isf1, Word16 *isf_q, Word16 *past_isfq,
       }
    }
 
-   /* decoding the ISFs */
    E_LPC_isf_2s5s_decode(indice, isf_q, past_isfq);
-
-   return;
 }
-

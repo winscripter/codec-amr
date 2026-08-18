@@ -26,36 +26,12 @@ extern const Float32 E_ROM_corrweight[];
 extern const Float32 E_ROM_inter4_1[];
 extern const Word16 E_ROM_inter4_2[];
 
-/*
- * E_GAIN_clip_init
- *
- * Parameters:
- *    mem        O: memory of gain of pitch clipping algorithm
- *
- * Function:
- *    Initialises state memory
- *
- * Returns:
- *    void
- */
 void E_GAIN_clip_init(Float32 mem[])
 {
    mem[0] = DIST_ISF_MAX;
    mem[1] = GAIN_PIT_MIN;
 }
 
-/*
- * E_GAIN_clip_test
- *
- * Parameters:
- *    mem         I: memory of gain of pitch clipping algorithm
- *
- * Function:
- *    Gain clipping test to avoid unstable synthesis on frame erasure
- *
- * Returns:
- *    Test result
- */
 Word32 E_GAIN_clip_test(Float32 mem[])
 {
    Word32 clip;
@@ -69,19 +45,6 @@ Word32 E_GAIN_clip_test(Float32 mem[])
    return (clip);
 }
 
-/*
- * E_GAIN_clip_isf_test
- *
- * Parameters:
- *    isf         I: isf values (in frequency domain)
- *    mem       I/O: memory of gain of pitch clipping algorithm
- *
- * Function:
- *    Check resonance for pitch clipping algorithm
- *
- * Returns:
- *    void
- */
 void E_GAIN_clip_isf_test(Float32 isf[], Float32 mem[])
 {
    Word32 i;
@@ -107,23 +70,8 @@ void E_GAIN_clip_isf_test(Float32 isf[], Float32 mem[])
    }
 
    mem[0] = dist;
-
-   return;
 }
 
-/*
- * E_GAIN_clip_pit_test
- *
- * Parameters:
- *    gain_pit       I: gain of quantized pitch
- *    mem          I/O: memory of gain of pitch clipping algorithm
- *
- * Function:
- *    Test quantised gain of pitch for pitch clipping algorithm
- *
- * Returns:
- *    void
- */
 void E_GAIN_clip_pit_test(Float32 gain_pit, Float32 mem[])
 {
    Float32 gain;
@@ -136,39 +84,20 @@ void E_GAIN_clip_pit_test(Float32 gain_pit, Float32 mem[])
    }
 
    mem[1] = gain;
-
-   return;
 }
 
-/*
- * E_GAIN_lp_decim2
- *
- * Parameters:
- *    x            I/O: signal to process
- *    l              I: size of filtering
- *    mem          I/O: memory (size = 3)
- *
- * Function:
- *    Decimate a vector by 2 with 2nd order fir filter.
- *
- * Returns:
- *    void
- */
 void E_GAIN_lp_decim2(Float32 x[], Word32 l, Float32 *mem)
 {
    Float32 x_buf[L_FRAME + 3];
    Float32 temp;
    Word32 i, j;
 
-   /* copy initial filter states into buffer */
-
    memcpy(x_buf, mem, 3 * sizeof(Float32));
    memcpy(&x_buf[3], x, l * sizeof(Float32));
 
    for (i = 0; i < 3; i++)
    {
-      mem[i] =
-         ((x[l - 3 + i] > 1e-10) | (x[l - 3 + i] < -1e-10)) ? x[l - 3 + i] : 0;
+      mem[i] = ((x[l - 3 + i] > 1e-10) | (x[l - 3 + i] < -1e-10)) ? x[l - 3 + i] : 0;
    }
 
    for (i = 0, j = 0; i < l; i += 2, j++)
@@ -180,30 +109,8 @@ void E_GAIN_lp_decim2(Float32 x[], Word32 l, Float32 *mem)
       temp += x_buf[i + 4] * 0.13F;
       x[j] = temp;
    }
-
-   return;
 }
 
-/*
- * E_GAIN_open_loop_search
- *
- * Parameters:
- *    wsp               I: signal (end pntr) used to compute the open loop pitch
- *    L_min             I: minimum pitch lag
- *    L_max             I: maximum pitch lag
- *    nFrame            I: length of frame to compute pitch
- *    L_0               I: old open-loop lag
- *    gain              O: open-loop pitch-gain
- *    hp_wsp_mem      I/O: memory of the highpass filter for hp_wsp[] (lg = 9)
- *    hp_old_wsp        O: highpass wsp[]
- *    weight_flg        I: is weighting function used
- *
- * Function:
- *    Find open loop pitch lag
- *
- * Returns:
- *    open loop pitch lag
- */
 Word32 E_GAIN_open_loop_search(Float32 *wsp, Word32 L_min, Word32 L_max,
                            Word32 nFrame, Word32 L_0, Float32 *gain,
                            Float32 *hp_wsp_mem, Float32 hp_old_wsp[],
@@ -222,7 +129,6 @@ Word32 E_GAIN_open_loop_search(Float32 *wsp, Word32 L_min, Word32 L_max,
       p  = &wsp[0];
       p1 = &wsp[-i];
 
-      /* Compute the correlation R0 and the energy R1. */
       R0 = 0.0;
 
       for (j = 0; j < nFrame; j += 2)
@@ -231,17 +137,12 @@ Word32 E_GAIN_open_loop_search(Float32 *wsp, Word32 L_min, Word32 L_max,
          R0 += p[j + 1] * p1[j + 1];
       }
 
-      /* Weighting of the correlation function. */
-
       R0 *= *ww--;
 
-      /* Weight the neighborhood of the old lag. */
       if ((L_0 > 0) & (weight_flg == 1))
       {
          R0 *= *we--;
       }
-
-      /* Store the values if a currest maximum has been found. */
 
       if (R0 >= R0_max)
       {
@@ -256,7 +157,6 @@ Word32 E_GAIN_open_loop_search(Float32 *wsp, Word32 L_min, Word32 L_max,
 
    for (k = 0; k < nFrame; k++)
    {
-
       data_b[0] = data_b[1];
       data_b[1] = data_b[2];
       data_b[2] = data_b[3];
@@ -300,19 +200,6 @@ Word32 E_GAIN_open_loop_search(Float32 *wsp, Word32 L_min, Word32 L_max,
    return(L);
 }
 
-/*
- * E_GAIN_sort
- *
- * Parameters:
- *    n              I: number of lags
- *    ra           I/O: lags / sorted lags
- *
- * Function:
- *    Sort open-loop lags
- *
- * Returns:
- *    void
- */
 static void E_GAIN_sort(Word32 n, Word32 *ra)
 {
    Word32 l, j, ir, i, rra;
@@ -361,25 +248,10 @@ static void E_GAIN_sort(Word32 n, Word32 *ra)
    }
 }
 
-/*
- * E_GAIN_olag_median
- *
- * Parameters:
- *    prev_ol_lag            I: previous open-loop lag
- *    old_ol_lag             I: old open-loop lags
- *
- * Function:
- *    Median of 5 previous open-loop lags
- *
- * Returns:
- *    median of 5 previous open-loop lags
- */
 Word32 E_GAIN_olag_median(Word32 prev_ol_lag, Word32 old_ol_lag[5])
 {
    Word32 tmp[6] = {0};
    Word32 i;
-
-   /* Use median of 5 previous open-loop lags as old lag */
 
    for (i = 4; i > 0; i--)
    {
@@ -396,29 +268,8 @@ Word32 E_GAIN_olag_median(Word32 prev_ol_lag, Word32 old_ol_lag[5])
    E_GAIN_sort(5, tmp);
 
    return tmp[3];
-
 }
 
-/*
- * E_GAIN_norm_corr
- *
- * Parameters:
- *    exc            I: excitation buffer
- *    xn             I: target signal
- *    h              I: weighted synthesis filter impulse response (Q15)
- *    t0_min         I: minimum value in the searched range
- *    t0_max         I: maximum value in the searched range
- *    corr_norm      O: normalized correlation (Q15)
- *
- * Function:
- *    Find the normalized correlation between the target vector and the
- *    filtered past excitation (correlation between target and filtered
- *    excitation divided by the square root of energy of filtered excitation)
- *    Size of subframe = L_SUBFR.
- *
- * Returns:
- *    void
- */
 static void E_GAIN_norm_corr(Float32 exc[], Float32 xn[], Float32 h[],
                              Word32 t_min, Word32 t_max, Float32 corr_norm[])
 {
@@ -426,19 +277,11 @@ static void E_GAIN_norm_corr(Float32 exc[], Float32 xn[], Float32 h[],
    Float32 alp, ps, norm;
    Word32 t, j, k;
 
-
    k = - t_min;
-
-   /* compute the filtered excitation for the first delay t_min */
-
    E_UTIL_f_convolve(&exc[k], h, excf);
-
-   /* loop for every possible period */
 
    for (t = t_min; t <= t_max; t++)
    {
-      /* Compute correlation between xn[] and excf[] */
-
       ps = 0.0F;
       alp = 0.01F;
 
@@ -448,15 +291,8 @@ static void E_GAIN_norm_corr(Float32 exc[], Float32 xn[], Float32 h[],
          alp += excf[j] * excf[j];
       }
 
-      /* Compute 1/sqrt(energie of excf[]) */
-
       norm = (Float32)(1.0F / sqrt(alp));
-
-      /* Normalize correlation = correlation * (1/sqrt(energy)) */
-
       corr_norm[t] = ps * norm;
-
-      /* update the filtered excitation excf[] for the next iteration */
 
       if (t != t_max)
       {
@@ -470,24 +306,8 @@ static void E_GAIN_norm_corr(Float32 exc[], Float32 xn[], Float32 h[],
          excf[0] = exc[k];
       }
    }
-
-   return;
 }
 
-
-/*
- * E_GAIN_norm_corr_interpolate
- *
- * Parameters:
- *    x           I: input vector
- *    frac        I: fraction (-4..+3)
- *
- * Function:
- *    Interpolating the normalized correlation
- *
- * Returns:
- *    interpolated value
- */
 static Float32 E_GAIN_norm_corr_interpolate(Float32 *x, Word32 frac)
 {
    Float32 s, *x1, *x2;
@@ -512,26 +332,6 @@ static Float32 E_GAIN_norm_corr_interpolate(Float32 *x, Word32 frac)
    return s;
 }
 
-/*
- * E_GAIN_closed_loop_search
- *
- * Parameters:
- *    exc            I: excitation buffer
- *    xn             I: target signal
- *    h              I: weighted synthesis filter impulse response
- *    t0_min         I: minimum value in the searched range
- *    t0_max         I: maximum value in the searched range
- *    pit_frac       O: chosen fraction
- *    i_subfr        I: flag to first subframe
- *    t0_fr2         I: minimum value for resolution 1/2
- *    t0_fr1         I: minimum value for resolution 1
- *
- * Function:
- *    Find the closed loop pitch period with 1/4 subsample resolution.
- *
- * Returns:
- *    chosen integer pitch lag
- */
 Word32 E_GAIN_closed_loop_search(Float32 exc[], Float32 xn[], Float32 h[],
                              Word32 t0_min, Word32 t0_max, Word32 *pit_frac,
                              Word32 i_subfr, Word32 t0_fr2, Word32 t0_fr1)
@@ -542,18 +342,10 @@ Word32 E_GAIN_closed_loop_search(Float32 exc[], Float32 xn[], Float32 h[],
    Word32 i, fraction, step;
    Word32 t0, t_min, t_max;
 
-   /* Find interval to compute normalized correlation */
-
    t_min = t0_min - L_INTERPOL1;
    t_max = t0_max + L_INTERPOL1;
-
-   /* allocate memory to normalized correlation vector */
-   corr = &corr_v[-t_min];      /* corr[t_min..t_max] */
-
-   /* Compute normalized correlation between target and filtered excitation */
+   corr = &corr_v[-t_min];
    E_GAIN_norm_corr(exc, xn, h, t_min, t_max, corr);
-
-   /*  find integer pitch */
    max = corr[t0_min];
    t0  = t0_min;
 
@@ -566,19 +358,11 @@ Word32 E_GAIN_closed_loop_search(Float32 exc[], Float32 xn[], Float32 h[],
       }
    }
 
-   /* If first subframe and t0 >= t0_fr1, do not search fractionnal pitch */
-
    if((i_subfr == 0) & (t0 >= t0_fr1))
    {
       *pit_frac = 0;
       return(t0);
    }
-
-   /*
-    * Search fractionnal pitch with 1/4 subsample resolution.
-    * Test the fractions around t0 and choose the one which maximizes
-    * the interpolated normalized correlation.
-    */
 
    step = 1;                /* 1/4 subsample resolution */
    fraction = -3;
@@ -606,8 +390,6 @@ Word32 E_GAIN_closed_loop_search(Float32 exc[], Float32 xn[], Float32 h[],
       }
    }
 
-   /* limit the fraction value in the interval [0,1,2,3] */
-
    if (fraction < 0)
    {
       fraction += 4;
@@ -619,23 +401,6 @@ Word32 E_GAIN_closed_loop_search(Float32 exc[], Float32 xn[], Float32 h[],
    return (t0);
 }
 
-
-/*
- * E_GAIN_adaptive_codebook_excitation
- *
- * Parameters:
- *    exc          I/O: excitation buffer
- *    T0             I: integer pitch lag
- *    frac           I: fraction of lag
- *    L_subfr        I: subframe size
- *
- * Function:
- *    Compute the result of Word32 term prediction with fractional
- *    interpolation of resolution 1/4.
- *
- * Returns:
- *    interpolated signal (adaptive codebook excitation)
- */
 void E_GAIN_adaptive_codebook_excitation(Word16 exc[], Word16 T0, Word32 frac, Word16 L_subfr)
 {
    Word32 i, j, k, L_sum;
@@ -649,7 +414,6 @@ void E_GAIN_adaptive_codebook_excitation(Word16 exc[], Word16 T0, Word32 frac, W
    {
       frac = (frac + UP_SAMP);
       x--;
-
    }
 
    x = x - L_INTERPOL2 + 1;
@@ -667,24 +431,8 @@ void E_GAIN_adaptive_codebook_excitation(Word16 exc[], Word16 T0, Word32 frac, W
       exc[j] = E_UTIL_saturate(L_sum);
       x++;
    }
-
-   return;
 }
 
-/*
- * E_GAIN_pitch_sharpening
- *
- * Parameters:
- *    x            I/O: impulse response (or algebraic code)
- *    pit_lag        I: pitch lag
- *
- * Function:
- *    Performs Pitch sharpening routine for one subframe.
- *    pitch sharpening factor is 0.85
- *
- * Returns:
- *    void
- */
 void E_GAIN_pitch_sharpening(Word16 *x, Word16 pit_lag)
 {
    Word32 L_tmp, i;
@@ -695,8 +443,6 @@ void E_GAIN_pitch_sharpening(Word16 *x, Word16 pit_lag)
       L_tmp += x[i - pit_lag] * PIT_SHARP;
       x[i] = (Word16)((L_tmp + 0x4000) >> 15);
    }
-
-   return;
 }
 
 void E_GAIN_f_pitch_sharpening(Float32 *x, Word32 pit_lag)
@@ -707,28 +453,8 @@ void E_GAIN_f_pitch_sharpening(Float32 *x, Word32 pit_lag)
    {
       x[i] += x[i - pit_lag] * F_PIT_SHARP;
    }
-
-   return;
 }
 
-/*
- * E_GAIN_voice_factor
- *
- * Parameters:
- *    exc            I: pitch excitation (Q_exc)
- *    Q_exc          I: exc format
- *    gain_pit       I: gain of pitch (Q14)
- *    code           I: Fixed codebook excitation (Q9)
- *    gain_code      I: gain of code (Q0)
- *
- *
- * Function:
- *    Find the voicing factor (1=voice to -1=unvoiced)
- *    Subframe length is L_SUBFR
- *
- * Returns:
- *    factor (-1=unvoiced to 1=voiced) (Q15)
- */
 Word32 E_GAIN_voice_factor(Word16 exc[], Word16 Q_exc, Word16 gain_pit,
                           Word16 code[], Word16 gain_code)
 {

@@ -37,15 +37,14 @@
 #define T_NBBITS_24k (NBBITS_24k + HEADER_SIZE)
 #define T_NBBITS_SID (NBBITS_SID + HEADER_SIZE)
 
-
 typedef struct
 {
    Word16 sid_update_counter;   /* Number of frames since last SID */
    Word16 sid_handover_debt;    /* Number of extra SID_UPD frames to schedule */
    Word16 prev_ft;              /* Type of the previous frame */
    void *encoder_state;         /* Points encoder state structure */
-} WB_enc_if_state;
-
+}
+WB_enc_if_state;
 
 extern const Word16 mode_7k[];
 extern const Word16 mode_9k[];
@@ -70,26 +69,8 @@ extern const Word16 dfh_M18k[];
 extern const Word16 dfh_M20k[];
 extern const Word16 dfh_M23k[];
 extern const Word16 dfh_M24k[];
-
-/* overall table with the parameters of the
-   decoder homing frames for all modes */
-
 extern const Word16 *dhf[10];
 
-
-/*
- * E_IF_homing_frame_test
- *
- *
- * Parameters:
- *    input_frame I: input speech frame
- *
- * Function:
- *    Check 320 input samples for matching EHF_MASK
- *
- * Returns:
- *    If homing frame
- */
 Word16 E_IF_homing_frame_test(Word16 input_frame[])
 {
    Word32 i, j = 0;
@@ -107,20 +88,6 @@ Word16 E_IF_homing_frame_test(Word16 input_frame[])
    return (Word16) (!j);
 }
 
-/*
- * E_IF_homing_coding
- *
- *
- * Parameters:
- *    parms  I/O: pointer to parameter vector
- *    mode     I: speech mode
- *
- * Function:
- *    Copy decoder homing frame from memory to parameter vector
- *
- * Returns:
- *    void
- */
 void E_IF_homing_coding(Word16 *parms, Word16 mode)
 {
    memcpy(parms, dhf[mode], nb_of_param[mode] * sizeof(Word16));
@@ -128,23 +95,7 @@ void E_IF_homing_coding(Word16 *parms, Word16 mode)
 
 
 #ifdef IF2
-/*
- * E_IF_if2_conversion
- *
- *
- * Parameters:
- *  mode        I: Mode
- *  param       I: encoder output
- *  stream      O: packed octets (TS26.201)
- *  frame_type  I: TX frame type
- *  dtx         I: speech mode for mode MRDTX
- *
- * Function:
- *  Packing one frame of encoded parameters to AMR-WB IF2
- *
- * Returns:
- *    number of octets
- */
+
 static int E_IF_if2_conversion(Word16 mode, Word16 *param, UWord8 *stream,
                                Word16 frame_type, Word16 speech_mode)
 {
@@ -487,23 +438,6 @@ static int E_IF_if2_conversion(Word16 mode, Word16 *param, UWord8 *stream,
 
 #else
 
-/*
- * E_IF_mms_conversion
- *
- *
- * Parameters:
- *  mode        I: Mode
- *  param       I: encoder output
- *  stream      O: packed octets (RFC 3267, section 5.3)
- *  frame_type  I: TX frame type
- *  dtx         I: speech mode for mode MRDTX
- *
- * Function:
- *  Packing one frame of encoded parameters to AMR-WB MMS format
- *
- * Returns:
- *    number of octets
- */
 static int E_IF_mms_conversion(Word16 mode, Word16 *param, UWord8 *stream,
                                Word16 frame_type, Word16 speech_mode)
 {
@@ -827,17 +761,13 @@ static int E_IF_mms_conversion(Word16 mode, Word16 *param, UWord8 *stream,
          {
             stream++;
          }
-
       }
 
-      /* sid type */
       if (frame_type == TX_SID_UPDATE)
       {
-         /* sid update */
          *stream += 0x1;
       }
 
-      /* speech mode indicator */
       *stream <<= 4;
       *stream = (UWord8)(*stream + speech_mode);
       j = 40;
@@ -846,7 +776,6 @@ static int E_IF_mms_conversion(Word16 mode, Word16 *param, UWord8 *stream,
 
    default:
       break;
-
    }
 
    return j/8 + 1;
@@ -854,18 +783,6 @@ static int E_IF_mms_conversion(Word16 mode, Word16 *param, UWord8 *stream,
 
 #endif
 
-/*
- * E_IF_sid_sync_reset
- *
- * Parameters:
- *    st                O: state structure
- *
- * Function:
- *    Initializes state memory
- *
- * Returns:
- *    void
- */
 static void E_IF_sid_sync_reset(WB_enc_if_state *st)
 {
    st->sid_update_counter = 3;
@@ -873,25 +790,7 @@ static void E_IF_sid_sync_reset(WB_enc_if_state *st)
    st->prev_ft = TX_SPEECH;
 }
 
-/*
- * E_IF_encode
- *
- *
- * Parameters:
- *    st                I: pointer to state structure
- *    mode              I: Speech Mode
- *    speech            I: Input speech
- *    serial            O: Output octet structure IF2 or 16-bit serial stream
- *    dtx               I: use DTX
- *
- * Function:
- *    Encoding and packing one frame of speech
- *
- * Returns:
- *    number of octets
- */
-int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial,
-                Word16 dtx)
+int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial, Word16 dtx)
 {
    Word16 prms[NB_PARM_MAX];
    Word32 i;
@@ -901,7 +800,6 @@ int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial,
    s = (WB_enc_if_state *)st;
    mode = req_mode;
 
-   /* check for homing frame */
    reset_flag = E_IF_homing_frame_test(speech);
 
    if (!reset_flag)
@@ -926,10 +824,6 @@ int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial,
          {
             if ((s->sid_handover_debt > 0) && (s->sid_update_counter > 2))
             {
-               /*
-                * ensure extra updates are
-                * properly delayed after a possible SID_FIRST
-                */
                frame_type = TX_SID_UPDATE;
                s->sid_handover_debt--;
             }
@@ -957,7 +851,6 @@ int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial,
       s->prev_ft = frame_type;
 
    }
-   /* perform homing if homing frame was detected at encoder input */
    else
    {
       E_MAIN_reset(s->encoder_state, 1);
@@ -973,23 +866,10 @@ int E_IF_encode(void *st, Word16 req_mode, Word16 *speech, UWord8 *serial,
 #endif
 }
 
-/*
- * E_IF_init
- *
- * Parameters:
- *    none
- *
- * Function:
- *    Allocates state memory and initializes state memory
- *
- * Returns:
- *    pointer to encoder interface structure
- */
 void *E_IF_init(void)
 {
    WB_enc_if_state * s;
 
-   /* allocate memory */
    if ((s = (WB_enc_if_state *)malloc(sizeof(WB_enc_if_state))) == NULL)
    {
       return NULL;
@@ -1003,28 +883,14 @@ void *E_IF_init(void)
    }
 
    E_IF_sid_sync_reset(s);
-
    return s;
 }
 
-/*
- * E_IF_exit
- *
- * Parameters:
- *    state             I: state structure
- *
- * Function:
- *    The memory used for state memory is freed
- *
- * Returns:
- *    Void
- */
 void E_IF_exit(void *state)
 {
    WB_enc_if_state *s;
    s = (WB_enc_if_state *)state;
 
-   /* free memory */
    E_MAIN_close(&s->encoder_state);
    free(s);
    state = NULL;
